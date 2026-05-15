@@ -260,10 +260,21 @@ Claude scores 0–10 based on:
 
 ## Data Freshness
 
+| Data | Source | Freshness |
+|---|---|---|
+| Spot price (report header) | FactSet / S&P Global MCP | Real-time institutional feed |
+| OHLCV history (indicator math) | yfinance | Last closed candle (weekly partial included) |
+| Intraday chart (today's action) | yfinance `interval="1m"` | ~15-min delayed — labeled in report |
+| Weekly chart (pattern view) | yfinance | Current partial week candle included |
+| GEX | Barchart scrape | Pulled at time of invocation |
+| Fundamentals | FactSet / S&P Global MCP | As of last reported quarter |
+
+**Chart labeling rule:** All chart candles display a "Prices delayed ~15 min" label. The live spot price from the MCP is shown prominently in the report header and is always current. For weekly swing trading, 15-min chart delay does not affect setup validity.
+
 Every report explicitly states:
 - **As-of timestamp** on every data field
 - **Source label** (yfinance / FactSet / Barchart) per section
-- **Warning flag** if any data is >15 min stale at time of render
+- **"Prices delayed ~15 min" notice** on all chart images
 
 ---
 
