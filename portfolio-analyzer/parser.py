@@ -46,6 +46,11 @@ def _normalize_weight(raw: Any) -> float | None:
     return val
 
 
+def _normalize_ticker(raw: Any) -> str:
+    """Normalize a ticker string: strip whitespace, remove non-alphanumeric chars (except . -), uppercase."""
+    return re.sub(r"[^A-Za-z0-9.\-]", "", str(raw).strip()).upper()
+
+
 def _normalize_float(raw: Any) -> float | None:
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return None
@@ -129,7 +134,7 @@ def _parse_dict(data: dict) -> dict:
     positions = []
     for p in data.get("positions", []):
         positions.append({
-            "ticker":     str(p.get("ticker", "")).upper(),
+            "ticker":     _normalize_ticker(p.get("ticker", "")),
             "weight":     _normalize_weight(p.get("weight")),
             "value":      _normalize_float(p.get("value")),
             "cost_basis": _normalize_float(p.get("cost_basis")),
