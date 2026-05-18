@@ -7,13 +7,23 @@
 
 ## 1. Overview
 
-A Claude slash command (`/portfolio-analyze`) that accepts a portfolio file (PDF, Excel, or screenshot), runs a Bridgewater-grade quantitative and qualitative analysis, fetches current market conditions, and produces three outputs: an in-session terminal summary, a full HTML report, and an Obsidian note.
+A Claude slash command (`/portfolio-analyze`) with two operating modes:
+
+**Mode 1 — Analyze:** Accepts an existing portfolio file (PDF, Excel, or screenshot), runs a Bridgewater-grade quantitative and qualitative analysis, and produces a full critique + 4 restructuring plans.
+
+**Mode 2 — Build:** Accepts no file. Prompts for investment parameters, then constructs 4 fresh portfolios from scratch matched to the current macro regime and the user's stated profile.
+
+Both modes fetch live market conditions, produce three outputs (terminal summary, HTML report, Obsidian note), and use the screener A+C hybrid for specific stock picks.
 
 ### Invocation
 
 ```bash
+# Mode 1 — Analyze existing portfolio
 /portfolio-analyze ~/Downloads/fidelity-holdings.pdf
 /portfolio-analyze ~/portfolio.xlsx
+
+# Mode 2 — Build from scratch (interactive prompts follow)
+/portfolio-analyze --build
 ```
 
 ---
@@ -373,7 +383,127 @@ From Rob's Obsidian vault (`ChartSchool/` folder):
 
 ---
 
-## 13. Out of Scope
+## 13. Mode 2 — Build From Scratch
+
+### Overview
+No file input. The skill prompts Claude to collect investor parameters interactively, then generates 4 complete portfolio constructions — one per archetype — with specific tickers and exact $ amounts to invest. The plan best matched to current macro conditions is highlighted as the primary recommendation.
+
+### Interactive Prompts (collected before any computation)
+
+```
+Total amount to invest: $___
+Risk profile: [aggressive / balanced / conservative / income]
+Time horizon: ___ years
+Primary goal: [growth / capital preservation / income / retirement / FIRE]
+Age (optional, used for 120-minus-age equity guideline): ___
+Any sectors/tickers to avoid: ___
+```
+
+If the user passes `--amount`, `--profile`, `--horizon` as flags, prompts are skipped for those fields.
+
+### Build Flow
+
+```
+User inputs collected
+        ↓
+  macro_context.py    — same as Mode 1 (current regime classification)
+        ↓
+  builder.py          — NEW: constructs 4 portfolios from scratch
+        ↓
+  Claude Analysis     — validates construction, adds narrative rationale
+        ↓
+  report.py           — same renderer, build-mode template
+        ↓
+  Obsidian save + terminal summary
+```
+
+### New File: `builder.py`
+
+Generates all 4 portfolio constructions. For each archetype:
+
+1. **Set target allocation** by asset class (equity / bonds / real assets / cash) per archetype rules
+2. **Determine sector weights** within equity sleeve — guided by current macro regime (overweight sectors favored in current quadrant)
+3. **Select tickers** via screener A+C hybrid — same priority as Mode 1
+4. **Size positions** — equal-weight within each sleeve unless screener score justifies overweight (max 8% single name)
+5. **Compute projected metrics** — expected beta, yield, Sharpe range, max drawdown estimate
+6. **Flag macro regime fit** — score each plan for current conditions (1–5)
+
+### Construction Rules per Archetype
+
+| Parameter | Aggressive | Balanced | Conservative | Income |
+|---|---|---|---|---|
+| Equity % | 90–100% | 50–60% | 20–35% | 40–55% |
+| Bond / Fixed income % | 0–5% | 25–35% | 40–55% | 15–25% |
+| Real assets (gold, commodities, TIPS) % | 0–5% | 10–15% | 5–10% | 5–10% |
+| Cash % | 3–7% | 2–5% | 5–15% | 5–10% |
+| REIT allocation % | 0% | 0–5% | 0–5% | 15–25% |
+| Max single position | 8% | 6% | 5% | 5% |
+| Min positions | 8 | 12 | 10 | 10 |
+| Target yield | < 1% | 1.5–2.5% | 2.5–3.5% | 3.5–5.5% |
+
+### Macro-Adjusted Sector Overweights
+
+Based on current regime, `builder.py` tilts the equity sleeve:
+
+| Regime | Overweight | Underweight |
+|---|---|---|
+| Rising Growth + Low Inflation | Tech, Consumer Disc., Industrials | Utilities, Bonds |
+| Rising Growth + Rising Inflation | Energy, Materials, Industrials, TIPS | Long bonds, REITs |
+| Stagflation | Energy, Gold miners, Utilities | Tech, Consumer Disc., Long bonds |
+| Deflation / Recession | Utilities, Healthcare, Long bonds | Energy, Financials, Tech |
+
+### Build-Mode Output Differences
+
+**Terminal summary** — no critique section, replaced with:
+```
+💼 PORTFOLIO BUILD — $50,000 · Aggressive · 15Y horizon
+Current Regime: Rising Growth + Moderating Inflation
+★ Recommended today: Aggressive (best regime fit: 4.8/5)
+
+AVGO   5.0%   $2,500   Score 6/6 (screener)
+META   5.0%   $2,500   Score 5/6 (screener)
+NVDA   4.0%   $2,000   Momentum leader · semi exposure
+...
+Expected beta: 1.35  |  Est. yield: 0.7%  |  Max drawdown est: -40–50%
+```
+
+**HTML report** — same 5-section structure except:
+- Section 1: "Portfolio Blueprint" replaces "Portfolio Snapshot" (pie chart of planned allocation, no holdings table)
+- Section 2: "Projected Metrics" (estimated ranges, not historical actuals)
+- Section 3: Bridgewater macro analysis (same — current regime + how each plan fares)
+- Section 4: **Construction Rationale** replaces Critique — explains WHY each position was selected, how it fits the macro regime, and what risk it introduces
+- Section 5: 4 portfolio tabs (same structure) — Buy table only (no Sell/Hold), allocation bars, macro grid
+
+**Obsidian note** — saved to `Trading/Portfolio Analysis/YYYY-MM-DD-portfolio-build.md` with additional frontmatter:
+```yaml
+mode: build
+investment_amount: $50,000
+risk_profile: aggressive
+time_horizon: 15y
+goal: growth
+recommended_plan: aggressive
+```
+
+### Example Buy Table (Build Mode — Aggressive, $50,000)
+
+| Ticker | Reason | % of Port | $ to Invest |
+|---|---|---|---|
+| AVGO `screener` | Score 6/6 · semi broadening play | 5.0% | $2,500 |
+| META `screener` | Score 5/6 · AI monetization | 5.0% | $2,500 |
+| NVDA | Momentum leader · semi exposure | 4.0% | $2,000 |
+| RBRK `screener` | Score 5/6 · cybersec momentum | 3.5% | $1,750 |
+| SOXX `ETF` | Sector breadth · semi basket | 4.0% | $2,000 |
+| QQQ `ETF` | Nasdaq100 core · diversified mega-cap | 8.0% | $4,000 |
+| SPY `ETF` | S&P500 base layer · market beta | 10.0% | $5,000 |
+| JPM `screener` | Score 4/6 · financials exposure | 4.0% | $2,000 |
+| AMZN | Cloud + consumer · high-quality growth | 4.5% | $2,250 |
+| Cash buffer | Deploy on pullbacks | 3.0% | $1,500 |
+| … | … | … | … |
+| **Total** | | **100%** | **$50,000** |
+
+---
+
+## 15. Out of Scope
 
 - Does not post orders or interact with any brokerage API
 - Does not store portfolio data between sessions
