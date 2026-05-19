@@ -351,9 +351,14 @@
     <h3 style="margin-top:16px;">Portfolio Grades</h3>
     <div class="grade-grid">
       {% for dim, grade in analysis.grades.items() %}
-      <div class="grade-cell">
+      {% set grade_letter = grade.grade if grade is mapping else grade %}
+      {% set grade_note   = grade.note  if grade is mapping else "" %}
+      <div class="grade-cell" title="{{ grade_note }}" style="cursor:default;">
         <div class="grade-label">{{ dim.replace("_", " ") }}</div>
-        <div class="grade-value {% if grade[0] in ['A'] %}green{% elif grade[0] in ['B'] %}yellow{% else %}red{% endif %}">{{ grade }}</div>
+        <div class="grade-value {% if grade_letter and grade_letter[0] == 'A' %}green{% elif grade_letter and grade_letter[0] == 'B' %}yellow{% else %}red{% endif %}">{{ grade_letter }}</div>
+        {% if grade_note %}
+        <div style="font-size:10px; color:#64748b; margin-top:4px; line-height:1.4; text-align:left;">{{ grade_note }}</div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
