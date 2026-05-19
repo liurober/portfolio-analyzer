@@ -6,6 +6,7 @@ Public API:
 """
 from __future__ import annotations
 
+import webbrowser
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -53,4 +54,7 @@ def generate_report(
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
+
+    webbrowser.open_new(out.as_uri())
+
     return str(out)
