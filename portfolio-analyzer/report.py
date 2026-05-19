@@ -51,7 +51,7 @@ def generate_report(
         recommended_plan=macro.get("recommended_plan", "balanced"),
     )
 
-    out = Path(output_path)
+    out = Path(output_path).resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
 
