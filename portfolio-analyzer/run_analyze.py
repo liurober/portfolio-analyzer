@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from portfolio_analyzer.parser import parse
-from portfolio_analyzer.macro_context import get_macro_context
+from portfolio_analyzer.macro_context import get_macro as get_macro_context
 from portfolio_analyzer.metrics import compute_metrics
 from portfolio_analyzer.screener_picks import get_picks
 from portfolio_analyzer.report import generate_report

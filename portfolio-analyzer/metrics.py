@@ -236,7 +236,9 @@ def _compute_income_style(positions: list[dict], total_value: float | None) -> d
         try:
             info = yf.Ticker(p["ticker"]).info
             mkt_cap   = info.get("marketCap")
-            div_yield = info.get("dividendYield") or 0.0
+            raw_yield = info.get("dividendYield") or 0.0
+            # clamp: yfinance occasionally returns total-return or stale values > 20%
+            div_yield = float(raw_yield) if 0.0 <= float(raw_yield) <= 0.20 else 0.0
             weighted_yield += w * div_yield
             cap = _cap_size(mkt_cap)
             if cap == "large":

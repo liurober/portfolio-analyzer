@@ -91,7 +91,8 @@ def save_note(
 
     regime = macro.get("regime", "Unknown")
     recommended_plan = macro.get("recommended_plan", "balanced")
-    vix = macro.get("vix", "N/A")
+    vix_raw = macro.get("vix", "N/A")
+    vix = f"{vix_raw:.2f}" if isinstance(vix_raw, (int, float)) else vix_raw
     spread = macro.get("spread_3m10y_bps", "N/A")
     spy_vs_200d = macro.get("spy_vs_200d_pct", "N/A")
     narrative = macro.get("narrative", "")
@@ -148,9 +149,12 @@ def save_note(
         for i, flag in enumerate(red_flags, 1):
             if isinstance(flag, dict):
                 text = flag.get("flag") or flag.get("message") or flag.get("text") or str(flag)
+                impact = flag.get("impact_est", "")
+                impact_tag = f" `{impact}`" if impact else ""
             else:
                 text = str(flag)
-            rf_lines.append(f"{i}. {text}")
+                impact_tag = ""
+            rf_lines.append(f"{i}. {text}{impact_tag}")
         red_flags_text = "\n".join(rf_lines)
     else:
         red_flags_text = "_None identified._"
@@ -161,6 +165,54 @@ def save_note(
         green_flags_text = "\n".join(gf_lines)
     else:
         green_flags_text = "_None identified._"
+
+    # --- Build restructuring plans section ---
+    plans = analysis.get("plans", {})
+    plans_lines = []
+    plan_order = ["aggressive", "balanced", "conservative", "income"]
+    for plan_name in plan_order:
+        plan = plans.get(plan_name)
+        if not plan:
+            continue
+        fit = plan.get("fit_grade", "")
+        fit_str = f" · Fit: **{fit}**" if fit else ""
+        plans_lines.append(f"\n### {plan_name.title()} Plan{fit_str}")
+        if plan.get("rationale"):
+            plans_lines.append(f"_{plan['rationale']}_\n")
+        sells = plan.get("sell", [])
+        if sells:
+            plans_lines.append("**Sell / Reduce**\n")
+            plans_lines.append("| Ticker | Action | Proceeds | Reason |")
+            plans_lines.append("|--------|--------|----------|--------|")
+            for s in sells:
+                proceeds = s.get("proceeds", s.get("freed_dollars", 0))
+                reason = s.get("reason", "").replace("|", "\\|")
+                plans_lines.append(f"| **{s['ticker']}** | {s.get('action','')} | ${proceeds:,.0f} | {reason} |")
+        buys = plan.get("buy", [])
+        if buys:
+            plans_lines.append("\n**Buy**\n")
+            plans_lines.append("| Ticker | % Port | $ Amount | Reason |")
+            plans_lines.append("|--------|--------|----------|--------|")
+            for b in buys:
+                pct = b.get("pct", b.get("target_pct", 0))
+                if pct > 1:
+                    pct = pct / 100
+                reason = b.get("reason", "").replace("|", "\\|")
+                plans_lines.append(f"| **{b['ticker']}** | {pct:.1%} | ${b.get('dollars',0):,.0f} | {reason} |")
+        holds = plan.get("hold", [])
+        if holds:
+            plans_lines.append("\n**Hold**\n")
+            for h in holds:
+                reason = h.get("reason", "").replace("|", "\\|")
+                plans_lines.append(f"- **{h['ticker']}** — {reason}")
+        macro_grid = plan.get("macro_grid", {})
+        if macro_grid:
+            plans_lines.append("\n**Macro Grid (post-restructure)**\n")
+            plans_lines.append("| Regime | Est. Impact |")
+            plans_lines.append("|--------|-------------|")
+            for regime_name, impact in macro_grid.items():
+                plans_lines.append(f"| {regime_name} | {impact} |")
+    plans_text = "\n".join(plans_lines) if plans_lines else "_No restructuring plans generated._"
 
     # --- Build markdown body ---
     body = f"""# Portfolio Review — {month_year}
@@ -175,7 +227,7 @@ def save_note(
 
 ## Key Metrics
 | Metric | Value |
-|---|---|
+|--------|-------|
 | Sharpe | {sharpe} |
 | Beta | {beta} |
 | Max Drawdown | {max_drawdown}% |
@@ -190,7 +242,7 @@ def save_note(
 {green_flags_text}
 
 ## Restructuring Plans
-[[{date_str}-aggressive-plan]] · [[{date_str}-balanced-plan]] · [[{date_str}-conservative-plan]] · [[{date_str}-income-plan]]
+{plans_text}
 """
 
     note_content = frontmatter + "\n" + body
