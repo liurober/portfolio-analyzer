@@ -76,7 +76,9 @@ def render_terminal_summary(holdings, macro, metrics, analysis):
 
     print()
     print(f"\033[95m\033[1m📊 PORTFOLIO ANALYSIS — {total_str} · {n} positions · {macro.get('regime', 'Unknown regime')}\033[0m")
-    print(f"\033[90m  VIX {macro.get('vix','?')} · 3M-10Y {macro.get('spread_3m10y_bps','?'):+.0f}bps · data as of {date.today().isoformat()}\033[0m")
+    vix_val = macro.get('vix', '?')
+    vix_str = f"{vix_val:.2f}" if isinstance(vix_val, (int, float)) else str(vix_val)
+    print(f"\033[90m  VIX {vix_str} · 3M-10Y {macro.get('spread_3m10y_bps','?'):+.0f}bps · data as of {date.today().isoformat()}\033[0m")
     print()
 
     print(f"\033[93m\033[1mIMPLICIT BET\033[0m")
