@@ -168,16 +168,18 @@
             </tr>
           {% endif %}
         {% endfor %}
-        {% set total_income = holdings.positions | map(attribute="value") | select | sum * 0.02 %}
+        {% set actual_yield = metrics.income_style.weighted_yield if metrics.income_style and metrics.income_style.weighted_yield else 0.02 %}
+        {% set total_income = holdings.total_value * actual_yield if holdings.total_value else 0 %}
         <tr style="background:#0f172a; font-weight:700;">
           <td>PORTFOLIO TOTAL</td>
           <td>100.0%</td>
           <td style="color:#e2e8f0;">${{ "{:,.0f}".format(holdings.total_value) if holdings.total_value else "&#8212;" }}</td>
           <td style="color:#4ade80; font-size:15px;">
-            ${{ "{:,.0f}".format(holdings.total_value * 0.02) if holdings.total_value else "&#8212;" }}/yr
+            ${{ "{:,.0f}".format(total_income) if holdings.total_value else "&#8212;" }}/yr
+            <span style="font-size:10px; color:#64748b; font-weight:400;"> ({{ "{:.1%}".format(actual_yield) }} yield)</span>
           </td>
           <td style="color:#4ade80;">
-            ${{ "{:,.0f}".format(holdings.total_value * 0.02 / 12) if holdings.total_value else "&#8212;" }}/mo
+            ${{ "{:,.0f}".format(total_income / 12) if holdings.total_value else "&#8212;" }}/mo
           </td>
           <td></td>
         </tr>
@@ -473,9 +475,11 @@
           </tr>
         </thead>
         <tbody>
-          {% set yield_map = {"screener": 0.008, "bond": 0.04, "real_asset": 0.01, "reit": 0.045, "cash": 0.05} %}
+          {% set ns = namespace(total_item_income=0) %}
           {% for item in plan.buy %}
-          {% set item_income = item.dollars * yield_map.get(item.tag | lower, 0.01) if item.dollars else 0 %}
+          {# Prefer est_annual_income if Claude provided it; otherwise dollars × plan yield_est #}
+          {% set item_income = item.est_annual_income if item.est_annual_income is defined and item.est_annual_income else (item.dollars * am.yield_est if item.dollars else 0) %}
+          {% set ns.total_item_income = ns.total_item_income + item_income %}
           <tr>
             <td><strong>{{ item.ticker }}</strong></td>
             <td><span class="badge badge-{{ item.tag | lower | replace(' ','_') }}">{{ item.tag }}</span></td>
@@ -487,12 +491,11 @@
           </tr>
           {% endfor %}
           {% set total_buy = plan.buy | map(attribute="dollars") | select | sum %}
-          {% set total_income_buy = plan.buy | map(attribute="dollars") | select | sum * am.yield_est %}
           <tr style="background:#0f172a; font-weight:700; border-top:1px solid #334155;">
             <td colspan="3">TOTAL</td>
             <td>${{ "{:,.0f}".format(total_buy) }}</td>
-            <td style="color:#4ade80; font-size:15px;">${{ "{:,.0f}".format(annual_income) }}/yr</td>
-            <td style="color:#4ade80;">${{ "{:,.0f}".format(annual_income / 12) }}/mo</td>
+            <td style="color:#4ade80; font-size:15px;">${{ "{:,.0f}".format(ns.total_item_income) }}/yr</td>
+            <td style="color:#4ade80;">${{ "{:,.0f}".format(ns.total_item_income / 12) }}/mo</td>
             <td></td>
           </tr>
         </tbody>

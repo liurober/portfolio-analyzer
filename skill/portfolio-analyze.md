@@ -231,18 +231,25 @@ Plan names: `aggressive`, `balanced`, `conservative`, `income`
 **`buy` list** — for each new or increased position:
 ```python
 {
-  "ticker":   str,
-  "pct":      float,   # 0–1 decimal (e.g. 0.05 = 5%)
-  "dollars":  float,
-  "reason":   str,     # 1 full sentence — must name specific macro rationale or income rationale
-  "tag":      str,     # "ETF" or "Stock"
+  "ticker":          str,
+  "pct":             float,   # 0–1 decimal (e.g. 0.05 = 5%)
+  "dollars":         float,
+  "reason":          str,     # 1 full sentence — must name specific macro rationale or income rationale
+  "tag":             str,     # "ETF" or "Stock"
+  "est_annual_income": float, # REQUIRED for ALL plans — dollars (dollars × ticker's realistic yield)
 }
 ```
 
-For the **income plan**, each buy entry must also include an estimated annual income:
-```python
-  "est_annual_income": float,   # dollars (dollars × yield estimate)
-```
+**`est_annual_income` must be accurate** — use the ticker's actual dividend/coupon yield, not a generic plan rate:
+- Bond ETFs (AGG, BND, TLT, LQD, HYG): 3.5–6.5% of dollars invested
+- REIT ETFs (VNQ, SCHH) or REIT stocks: 3.5–5.0% of dollars invested
+- Dividend equity ETFs (SCHD, VYM, HDV): 3.0–4.5% of dollars invested
+- Growth ETFs (SPY, QQQ, VTI): 1.0–1.5% of dollars invested
+- Individual growth stocks (AAPL, MSFT, NVDA): 0.0–1.5% of dollars invested
+- Cash equivalents (SHV, BIL, SGOV): 4.5–5.2% of dollars invested
+- Gold/commodity (GLD, IAU, GSG): 0% (no income)
+
+Example: SCHD with $10,000 invested → est_annual_income = 350 (3.5% yield), not $70 (0.7% plan rate)
 
 **`hold` list** — for every position not sold or bought:
 ```python
