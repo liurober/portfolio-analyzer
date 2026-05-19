@@ -206,18 +206,27 @@ Produce a simpler `analysis` dict with:
 
 ---
 
-### Step 3: Generate HTML Report
+### Step 3: Generate HTML Report + Obsidian Note + Terminal Summary
+
+Run all three together. If `ctx["analysis"]` raises `KeyError`, Step 2 was not completed — go back and run it first.
 
 ```python
-import sys, json
+import sys, json, os
 sys.path.insert(0, "/Users/robertliu")
 from portfolio_analyzer.report import generate_report
+from portfolio_analyzer.obsidian import save_note
+from portfolio_analyzer.run_analyze import render_terminal_summary
 from datetime import date
 
-ctx = json.load(open("/Users/robertliu/portfolio-analyzer/.analysis_context.json"))
+CONTEXT_PATH = "/Users/robertliu/portfolio-analyzer/.analysis_context.json"
+ctx = json.load(open(CONTEXT_PATH))
 
-import os; os.makedirs("/Users/robertliu/portfolio-reports", exist_ok=True)
-output_path = f"/Users/robertliu/portfolio-reports/{date.today().isoformat()}-analysis.html"
+if "analysis" not in ctx:
+    raise RuntimeError("analysis key missing — complete Step 2 first and write ctx['analysis'] to the context file")
+
+os.makedirs("/Users/robertliu/portfolio-reports", exist_ok=True)
+date_str = ctx.get("date", date.today().isoformat())
+output_path = f"/Users/robertliu/portfolio-reports/{date_str}-analysis.html"
 
 generate_report(
     holdings=ctx["holdings"],
@@ -228,44 +237,19 @@ generate_report(
     output_path=output_path,
     mode=ctx["mode"]
 )
-```
-
-### Step 4: Save Obsidian Note
-
-```python
-import sys, json
-sys.path.insert(0, "/Users/robertliu")
-from portfolio_analyzer.obsidian import save_note
-from datetime import date
-
-ctx = json.load(open("/Users/robertliu/portfolio-analyzer/.analysis_context.json"))
 
 save_note(
     holdings=ctx["holdings"],
     macro=ctx["macro"],
     metrics=ctx["metrics"],
     analysis=ctx["analysis"],
-    date_str=date.today().isoformat(),
+    date_str=date_str,
     mode=ctx["mode"]
 )
-```
 
-### Step 5: Terminal Summary
-
-```python
-import sys, json
-sys.path.insert(0, "/Users/robertliu")
-from portfolio_analyzer.run_analyze import render_terminal_summary
-from datetime import date
-
-ctx = json.load(open("/Users/robertliu/portfolio-analyzer/.analysis_context.json"))
 render_terminal_summary(ctx["holdings"], ctx["macro"], ctx["metrics"], ctx["analysis"])
-```
-
-Then print:
-```
-→ HTML report: ~/portfolio-reports/{date}-analysis.html
-→ Obsidian note: Trading/Portfolio Analysis/{date}-portfolio-review.md
+print(f"\n→ HTML report: ~/portfolio-reports/{date_str}-analysis.html")
+print(f"→ Obsidian note: Trading/Portfolio Analysis/{date_str}-portfolio-review.md")
 ```
 
 ---
@@ -273,7 +257,8 @@ Then print:
 ## Error Handling
 
 - **Parser returns 0 positions**: use Claude vision fallback (see PDF Fallback above) — never stop the analysis
+- **`KeyError: 'analysis'`**: Step 2 not completed or context was reset — re-run Step 2, write the analysis dict into the context JSON, then retry Step 3
 - **yfinance data unavailable**: `compute_metrics` handles gracefully; skipped tickers reported
 - **`dividendYield` > 20%**: already clamped in `metrics.py` — yfinance sometimes returns garbage values
-- **`ModuleNotFoundError: portfolio_analyzer`**: ensure you ran `cd /Users/robertliu` and the symlink `portfolio_analyzer → portfolio-analyzer` exists; recreate it with `ln -sf portfolio-analyzer portfolio_analyzer`
-- **Obsidian vault not found**: print warning, skip Step 4, HTML report still generated
+- **`ModuleNotFoundError: portfolio_analyzer`**: ensure you ran `cd /Users/robertliu` and the symlink exists; recreate with `cd /Users/robertliu && ln -sf portfolio-analyzer portfolio_analyzer`
+- **Obsidian vault not found**: print warning, skip Obsidian save, HTML report still generated
