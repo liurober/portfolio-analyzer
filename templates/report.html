@@ -280,41 +280,30 @@
     <h3>Implicit Bet</h3>
     <div class="implicit-bet">{{ analysis.implicit_bet }}</div>
     {% endif %}
-    <h3 style="margin-top:16px;">Macro Regime Sensitivity</h3>
-    <div class="macro-grid">
-      <div class="macro-cell good">
-        <div class="macro-cell-label">Rising Growth + Low Inflation</div>
-        <div class="macro-cell-value green">
-          {% if analysis.plans and analysis.plans.aggressive and analysis.plans.aggressive.macro_grid %}
-            {{ analysis.plans.aggressive.macro_grid.rising_growth_low_inflation }}
-          {% else %}&#8212;{% endif %}
-        </div>
+    <h3 style="margin-top:16px;">Macro Regime Sensitivity — Current Portfolio</h3>
+    {% set ms = analysis.macro_sensitivity if analysis.macro_sensitivity else {} %}
+    {% set ms_keys = ["Rising Growth + Low Inflation", "Rising Growth + Rising Inflation", "Stagflation", "Deflation / Recession"] %}
+    {% set ms_cell = ["good", "neutral", "bad", "bad"] %}
+    {% set ms_color = ["green", "yellow", "red", "red"] %}
+    <div class="macro-grid" style="margin-bottom:16px;">
+      {% for key in ms_keys %}
+      <div class="macro-cell {{ ms_cell[loop.index0] }}">
+        <div class="macro-cell-label">{{ key }}</div>
+        <div class="macro-cell-value {{ ms_color[loop.index0] }}">{{ ms[key] if ms and key in ms else "&#8212;" }}</div>
       </div>
-      <div class="macro-cell neutral">
-        <div class="macro-cell-label">Rising Growth + Rising Inflation</div>
-        <div class="macro-cell-value yellow">
-          {% if analysis.plans and analysis.plans.balanced and analysis.plans.balanced.macro_grid %}
-            {{ analysis.plans.balanced.macro_grid.rising_growth_rising_inflation }}
-          {% else %}&#8212;{% endif %}
-        </div>
-      </div>
-      <div class="macro-cell bad">
-        <div class="macro-cell-label">Stagflation</div>
-        <div class="macro-cell-value red">
-          {% if analysis.plans and analysis.plans.conservative and analysis.plans.conservative.macro_grid %}
-            {{ analysis.plans.conservative.macro_grid.stagflation }}
-          {% else %}&#8212;{% endif %}
-        </div>
-      </div>
-      <div class="macro-cell bad">
-        <div class="macro-cell-label">Deflation / Recession</div>
-        <div class="macro-cell-value red">
-          {% if analysis.plans and analysis.plans.conservative and analysis.plans.conservative.macro_grid %}
-            {{ analysis.plans.conservative.macro_grid.deflation_recession }}
-          {% else %}&#8212;{% endif %}
-        </div>
-      </div>
+      {% endfor %}
     </div>
+    {% if ms %}
+    <div style="font-size:13px; color:#94a3b8; line-height:1.7;">
+      {% for key in ms_keys %}
+      {% if ms[key] and ms[key] | length > 10 %}
+      <div style="margin-bottom:10px; padding:10px 14px; background:#1e293b; border-radius:6px; border-left:3px solid {% if 'Growth' in key and 'Low' in key %}#4ade80{% elif 'Rising Inflation' in key %}#fbbf24{% else %}#f87171{% endif %};">
+        <span style="font-weight:600; color:#e2e8f0;">{{ key }}:</span> {{ ms[key] }}
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
     <h3 style="margin-top:16px;">Asset Class Breakdown</h3>
     <div style="font-size:13px;">
       {% set styles = [("Equity", metrics.income_style.equity_pct, "#60a5fa"), ("Bonds", metrics.income_style.bond_pct, "#4ade80"), ("Alts", metrics.income_style.alt_pct, "#fbbf24")] %}
@@ -401,9 +390,9 @@
     {% set annual_income = portfolio_value * am.yield_est %}
     <div id="plan-{{ plan_name }}" class="tab-content {% if loop.first %}active{% endif %}" style="padding-top:16px;">
 
-      <!-- Income callout (prominent for income plan, shown for all) -->
+      <!-- Income callout: full post-restructure portfolio income estimate -->
       <div class="income-callout">
-        <div class="income-callout-label">Est. Annual Income — {{ plan_name | title }} Plan</div>
+        <div class="income-callout-label">Est. Full Portfolio Annual Income — {{ plan_name | title }} Plan</div>
         <div class="income-callout-value">
           {% if portfolio_value %}${{ "{:,.0f}".format(annual_income) }}/yr{% else %}&#8212;{% endif %}
         </div>
@@ -411,7 +400,7 @@
           {% if portfolio_value %}
             ${{ "{:,.0f}".format(annual_income / 12) }}/mo &nbsp;·&nbsp;
             ${{ "{:,.0f}".format(annual_income / 52) }}/wk &nbsp;·&nbsp;
-            Yield est {{ "{:.1%}".format(am.yield_est) }} on ${{ "{:,.0f}".format(portfolio_value) }}
+            Archetype yield est {{ "{:.1%}".format(am.yield_est) }} × ${{ "{:,.0f}".format(portfolio_value) }} AUM
           {% endif %}
         </div>
       </div>
@@ -447,16 +436,17 @@
       {% endif %}
 
       {% if mode != "build" and plan.sell %}
-      <h3>Sell / Reduce</h3>
+      <h3>Sell / Reduce — {{ plan.sell | length }} positions</h3>
       <table style="margin-bottom:16px;">
-        <thead><tr><th>Ticker</th><th>Action</th><th>Proceeds</th><th>Reason</th></tr></thead>
+        <thead><tr><th>Ticker</th><th>Action</th><th>Shares</th><th>Proceeds</th><th>Reason</th></tr></thead>
         <tbody>
           {% for item in plan.sell %}
           <tr>
             <td><strong>{{ item.ticker }}</strong></td>
             <td style="color:#f87171;">{{ item.action }}</td>
+            <td>{{ "{:,.0f}".format(item.shares) if item.shares else "&#8212;" }}</td>
             <td>${{ "{:,.0f}".format(item.proceeds) }}</td>
-            <td style="color:#94a3b8;">{{ item.reason }}</td>
+            <td style="color:#94a3b8; font-size:12px;">{{ item.reason }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -464,11 +454,11 @@
       {% endif %}
 
       {% if plan.buy %}
-      <h3>Buy — All Positions</h3>
+      <h3>Buy / Add — {{ plan.buy | length }} positions</h3>
       <table style="margin-bottom:16px;">
         <thead>
           <tr>
-            <th>Ticker</th><th>Sleeve</th><th>% Port</th><th>$ to Invest</th>
+            <th>Ticker</th><th>Type</th><th>Est. Shares</th><th>% Port</th><th>$ Amount</th>
             <th style="color:#4ade80;">Est. Annual Income</th>
             <th style="color:#4ade80;">Est. Monthly</th>
             <th>Reason</th>
@@ -477,22 +467,23 @@
         <tbody>
           {% set ns = namespace(total_item_income=0) %}
           {% for item in plan.buy %}
-          {# Prefer est_annual_income if Claude provided it; otherwise dollars × plan yield_est #}
+          {# Use est_annual_income if Claude provided it; otherwise fallback to dollars × plan yield_est #}
           {% set item_income = item.est_annual_income if item.est_annual_income is defined and item.est_annual_income else (item.dollars * am.yield_est if item.dollars else 0) %}
           {% set ns.total_item_income = ns.total_item_income + item_income %}
           <tr>
             <td><strong>{{ item.ticker }}</strong></td>
             <td><span class="badge badge-{{ item.tag | lower | replace(' ','_') }}">{{ item.tag }}</span></td>
+            <td style="color:#94a3b8;">{{ "{:,.0f}".format(item.est_shares) if item.est_shares is defined and item.est_shares else "&#8212;" }}</td>
             <td>{{ "{:.1%}".format(item.pct) }}</td>
             <td><strong>${{ "{:,.0f}".format(item.dollars) }}</strong></td>
-            <td style="color:#4ade80;">${{ "{:,.0f}".format(item_income) }}</td>
-            <td style="color:#64748b;">${{ "{:,.0f}".format(item_income / 12) }}</td>
+            <td style="color:#4ade80;">${{ "{:,.0f}".format(item_income) }}/yr</td>
+            <td style="color:#64748b;">${{ "{:,.0f}".format(item_income / 12) }}/mo</td>
             <td style="color:#94a3b8; font-size:12px;">{{ item.reason }}</td>
           </tr>
           {% endfor %}
           {% set total_buy = plan.buy | map(attribute="dollars") | select | sum %}
           <tr style="background:#0f172a; font-weight:700; border-top:1px solid #334155;">
-            <td colspan="3">TOTAL</td>
+            <td colspan="4">BUY TOTAL ({{ plan.buy | length }} positions)</td>
             <td>${{ "{:,.0f}".format(total_buy) }}</td>
             <td style="color:#4ade80; font-size:15px;">${{ "{:,.0f}".format(ns.total_item_income) }}/yr</td>
             <td style="color:#4ade80;">${{ "{:,.0f}".format(ns.total_item_income / 12) }}/mo</td>
@@ -503,15 +494,16 @@
       {% endif %}
 
       {% if mode != "build" and plan.hold %}
-      <h3>Hold</h3>
+      <h3>Hold — {{ plan.hold | length }} positions</h3>
       <table style="margin-bottom:16px;">
-        <thead><tr><th>Ticker</th><th>Yield</th><th>Value</th><th>Reason</th></tr></thead>
+        <thead><tr><th>Ticker</th><th>Shares</th><th>Current Value</th><th>Yield</th><th>Reason</th></tr></thead>
         <tbody>
           {% for item in plan.hold %}
           <tr>
             <td><strong>{{ item.ticker }}</strong></td>
-            <td>{{ "{:.1%}".format(item.yield_pct) if item.yield_pct else "&#8212;" }}</td>
+            <td>{{ "{:,.0f}".format(item.shares) if item.shares is defined and item.shares else "&#8212;" }}</td>
             <td>{{ "$" + "{:,.0f}".format(item.value) if item.value else "&#8212;" }}</td>
+            <td>{{ "{:.1%}".format(item.current_yield_pct) if item.current_yield_pct is defined and item.current_yield_pct else "&#8212;" }}</td>
             <td style="color:#64748b; font-size:12px;">{{ item.reason if item.reason else "&#8212;" }}</td>
           </tr>
           {% endfor %}
@@ -520,12 +512,17 @@
       {% endif %}
 
       {% if plan.macro_grid %}
-      <h3>Macro Regime Grid — After Restructuring</h3>
+      <h3>Macro Regime Grid — Post-Restructure</h3>
+      {% set pg_keys = ["Rising Growth + Low Inflation", "Rising Growth + Rising Inflation", "Stagflation", "Deflation / Recession"] %}
+      {% set pg_cell  = ["good", "neutral", "bad", "bad"] %}
+      {% set pg_color = ["green", "yellow", "red", "red"] %}
       <div class="macro-grid">
-        <div class="macro-cell good"><div class="macro-cell-label">Rising Growth + Low Inflation</div><div class="macro-cell-value green">{{ plan.macro_grid.rising_growth_low_inflation }}</div></div>
-        <div class="macro-cell neutral"><div class="macro-cell-label">Rising Growth + Rising Inflation</div><div class="macro-cell-value yellow">{{ plan.macro_grid.rising_growth_rising_inflation }}</div></div>
-        <div class="macro-cell bad"><div class="macro-cell-label">Stagflation</div><div class="macro-cell-value red">{{ plan.macro_grid.stagflation }}</div></div>
-        <div class="macro-cell bad"><div class="macro-cell-label">Deflation / Recession</div><div class="macro-cell-value red">{{ plan.macro_grid.deflation_recession }}</div></div>
+        {% for key in pg_keys %}
+        <div class="macro-cell {{ pg_cell[loop.index0] }}">
+          <div class="macro-cell-label">{{ key }}</div>
+          <div class="macro-cell-value {{ pg_color[loop.index0] }}">{{ plan.macro_grid[key] if key in plan.macro_grid else "&#8212;" }}</div>
+        </div>
+        {% endfor %}
       </div>
       {% endif %}
 
