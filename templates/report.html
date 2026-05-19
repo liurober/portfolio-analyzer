@@ -493,20 +493,70 @@
       </table>
       {% endif %}
 
-      {% if mode != "build" and plan.hold %}
-      <h3>Hold — {{ plan.hold | length }} positions</h3>
+      {% if mode != "build" %}
+      {#
+        Auto-populate hold from holdings.positions minus sell/buy tickers.
+        Claude's hold list provides reasons + yield data; template fills gaps.
+        This guarantees every current position appears — no snapshot, no omissions.
+      #}
+      {% set sold_tickers  = plan.sell | map(attribute="ticker") | list if plan.sell else [] %}
+      {% set bought_tickers = plan.buy  | map(attribute="ticker") | list if plan.buy  else [] %}
+      {# Tag-based yield fallback for positions where Claude didn't supply yield #}
+      {% set tag_yield = {"reit": 0.045, "real_asset": 0.01, "bond": 0.04, "cash": 0.051, "screener": 0.008} %}
+      {# Collect hold positions: all current holdings not in sell or buy #}
+      {% set ns2 = namespace(hold_count=0, hold_income=0.0) %}
+      {% for pos in holdings.positions %}
+        {% if pos.ticker not in sold_tickers and pos.ticker not in bought_tickers %}
+          {% set matched = plan.hold | selectattr("ticker", "equalto", pos.ticker) | list if plan.hold else [] %}
+          {% set h = matched[0] if matched else {} %}
+          {% set pos_yield = h.current_yield_pct if h and h.current_yield_pct is defined and h.current_yield_pct else tag_yield.get(pos.tag, 0.008) %}
+          {% set pos_income = pos.value * pos_yield if pos.value else 0 %}
+          {% set ns2.hold_income = ns2.hold_income + pos_income %}
+          {% set ns2.hold_count = ns2.hold_count + 1 %}
+        {% endif %}
+      {% endfor %}
+      <h3>Hold — {{ ns2.hold_count }} positions · Est. income ${{ "{:,.0f}".format(ns2.hold_income) }}/yr from held positions</h3>
       <table style="margin-bottom:16px;">
-        <thead><tr><th>Ticker</th><th>Shares</th><th>Current Value</th><th>Yield</th><th>Reason</th></tr></thead>
-        <tbody>
-          {% for item in plan.hold %}
+        <thead>
           <tr>
-            <td><strong>{{ item.ticker }}</strong></td>
-            <td>{{ "{:,.0f}".format(item.shares) if item.shares is defined and item.shares else "&#8212;" }}</td>
-            <td>{{ "$" + "{:,.0f}".format(item.value) if item.value else "&#8212;" }}</td>
-            <td>{{ "{:.1%}".format(item.current_yield_pct) if item.current_yield_pct is defined and item.current_yield_pct else "&#8212;" }}</td>
-            <td style="color:#64748b; font-size:12px;">{{ item.reason if item.reason else "&#8212;" }}</td>
+            <th>Ticker</th><th>Shares</th><th>Current Value</th><th>Yield</th>
+            <th style="color:#4ade80;">Annual Income</th>
+            <th style="color:#4ade80;">Monthly</th>
+            <th>Reason</th>
           </tr>
+        </thead>
+        <tbody>
+          {% set ns3 = namespace(hold_total_income=0.0) %}
+          {% for pos in holdings.positions %}
+          {% if pos.ticker not in sold_tickers and pos.ticker not in bought_tickers %}
+          {% set matched = plan.hold | selectattr("ticker", "equalto", pos.ticker) | list if plan.hold else [] %}
+          {% set h = matched[0] if matched else {} %}
+          {% set pos_yield = h.current_yield_pct if h and h.current_yield_pct is defined and h.current_yield_pct else tag_yield.get(pos.tag, 0.008) %}
+          {% set pos_income = pos.value * pos_yield if pos.value else 0 %}
+          {% set ns3.hold_total_income = ns3.hold_total_income + pos_income %}
+          <tr {% if pos_income > 0 %}style="border-left: 2px solid rgba(74,222,128,0.3);"{% endif %}>
+            <td><strong>{{ pos.ticker }}</strong></td>
+            <td>{{ "{:,.1f}".format(pos.shares) if pos.shares else "&#8212;" }}</td>
+            <td>${{ "{:,.0f}".format(pos.value) if pos.value else "&#8212;" }}</td>
+            <td>{{ "{:.1%}".format(pos_yield) if pos_yield else "&#8212;" }}</td>
+            <td {% if pos_income > 0 %}style="color:#4ade80;"{% else %}style="color:#475569;"{% endif %}>
+              {% if pos_income > 0 %}${{ "{:,.0f}".format(pos_income) }}/yr{% else %}$0{% endif %}
+            </td>
+            <td {% if pos_income > 0 %}style="color:#4ade80;"{% else %}style="color:#475569;"{% endif %}>
+              {% if pos_income > 0 %}${{ "{:,.0f}".format(pos_income / 12) }}/mo{% else %}—{% endif %}
+            </td>
+            <td style="color:#64748b; font-size:12px;">
+              {{ h.reason if h and h.reason else "Retained — no structural change required for this plan." }}
+            </td>
+          </tr>
+          {% endif %}
           {% endfor %}
+          <tr style="background:#0f172a; font-weight:700; border-top:1px solid #334155;">
+            <td colspan="4">HOLD TOTAL ({{ ns2.hold_count }} positions)</td>
+            <td style="color:#4ade80; font-size:15px;">${{ "{:,.0f}".format(ns3.hold_total_income) }}/yr</td>
+            <td style="color:#4ade80;">${{ "{:,.0f}".format(ns3.hold_total_income / 12) }}/mo</td>
+            <td></td>
+          </tr>
         </tbody>
       </table>
       {% endif %}
