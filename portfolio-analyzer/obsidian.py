@@ -147,7 +147,7 @@ def save_note(
         rf_lines = []
         for i, flag in enumerate(red_flags, 1):
             if isinstance(flag, dict):
-                text = flag.get("message") or flag.get("text") or str(flag)
+                text = flag.get("flag") or flag.get("message") or flag.get("text") or str(flag)
             else:
                 text = str(flag)
             rf_lines.append(f"{i}. {text}")
