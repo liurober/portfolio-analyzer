@@ -94,18 +94,81 @@ def run_build(amount=None, profile=None, horizon=None, goal=None, age=None, avoi
 
 def _render_build_summary(portfolios, macro, amount, profile, horizon):
     rec = macro.get("recommended_plan", "balanced")
-    print(f"\n\033[95m\033[1m💼 PORTFOLIO BUILD — ${amount:,.0f} · {profile.title()} · {horizon}Y horizon\033[0m")
-    print(f"\033[96m  Regime: {macro['regime']} · ★ Recommended today: {rec.title()} (fit {portfolios[rec]['macro_fit_score']:.1f}/5)\033[0m\n")
+    BOLD = "\033[1m"; DIM = "\033[2m"; RESET = "\033[0m"
+    PURPLE = "\033[95m"; CYAN = "\033[96m"; YELLOW = "\033[93m"
+    GREEN = "\033[92m"; RED = "\033[91m"; GREY = "\033[90m"
+    BLUE = "\033[94m"
+
+    SLEEVE_COLORS = {
+        "screener":    PURPLE,
+        "bond":        BLUE,
+        "real_asset":  YELLOW,
+        "reit":        GREEN,
+        "cash":        GREY,
+    }
+    SLEEVE_LABELS = {
+        "screener":    "EQUITY / SCREENER",
+        "bond":        "FIXED INCOME",
+        "real_asset":  "REAL ASSETS",
+        "reit":        "REITs",
+        "cash":        "CASH",
+    }
+
+    print(f"\n{PURPLE}{BOLD}💼 PORTFOLIO BUILD — ${amount:,.0f} · {profile.title()} · {horizon}Y horizon{RESET}")
+    print(f"{CYAN}  Regime: {macro['regime']} · ★ Recommended today: {rec.title()} "
+          f"(macro fit {portfolios[rec]['macro_fit_score']:.1f}/5){RESET}")
+    print(f"{GREY}  VIX {macro.get('vix','?')} · 3M-10Y {macro.get('spread_3m10y_bps',0):+.0f}bps · "
+          f"Fed rate {macro.get('fed_rate','?')}%{RESET}\n")
 
     for arch, port in portfolios.items():
-        star = " ★" if arch == rec else ""
+        star = " ★ RECOMMENDED" if arch == rec else ""
         m = port["target_metrics"]
-        print(f"\033[1m  {arch.upper()}{star}\033[0m  beta ~{m['beta_est']}  yield ~{m['yield_est']:.1%}  max DD ~{m['max_dd_est']:.0%}")
-        for p in port["positions"][:5]:
-            print(f"    {p['ticker']:<6}  {p['weight']:.1%}  ${p['value']:,.0f}  {p['reason'][:45]}")
-        if len(port["positions"]) > 5:
-            print(f"    ... +{len(port['positions'])-5} more positions")
+        annual_income = amount * m["yield_est"]
+
+        # Header bar
+        print(f"{'─'*72}")
+        print(f"{BOLD}  {arch.upper()}{RESET}{YELLOW}{star}{RESET}")
+        print(f"  Macro fit: {m.get('macro_fit_score', port.get('macro_fit_score', '?')):.1f}/5  "
+              f"│  Beta ~{m['beta_est']}  │  Max DD ~{m['max_dd_est']:.0%}  │  "
+              f"Yield ~{m['yield_est']:.1%}  │  Equity {m['equity_pct']:.0%}"
+              .replace("│", f"{GREY}│{RESET}"))
+        print(f"  {GREEN}Est. Annual Income: ${annual_income:,.0f}{RESET}  "
+              f"({GREY}${annual_income/12:,.0f}/mo{RESET})")
+        print(f"  {port['rationale'][:90]}")
         print()
+
+        # Group positions by sleeve
+        from collections import defaultdict
+        sleeves = defaultdict(list)
+        for p in port["positions"]:
+            sleeves[p.get("tag", "screener")].append(p)
+
+        sleeve_order = ["screener", "bond", "real_asset", "reit", "cash"]
+        for sleeve in sleeve_order:
+            positions = sleeves.get(sleeve, [])
+            if not positions:
+                continue
+            sleeve_weight = sum(p["weight"] for p in positions)
+            sleeve_value  = sum(p["value"]  for p in positions)
+            color = SLEEVE_COLORS.get(sleeve, RESET)
+            label = SLEEVE_LABELS.get(sleeve, sleeve.upper())
+            print(f"  {color}{BOLD}{label}{RESET}  "
+                  f"{GREY}({sleeve_weight:.1%} · ${sleeve_value:,.0f}){RESET}")
+            print(f"  {'Ticker':<7}  {'Weight':>7}  {'Value':>10}  Reason")
+            print(f"  {'─'*65}")
+            for p in positions:
+                reason = p.get("reason", "")[:50]
+                print(f"  {color}{p['ticker']:<7}{RESET}  "
+                      f"{p['weight']:>7.1%}  "
+                      f"${p['value']:>9,.0f}  "
+                      f"{GREY}{reason}{RESET}")
+            print()
+
+        # Portfolio totals
+        total_weight = sum(p["weight"] for p in port["positions"])
+        total_value  = sum(p["value"]  for p in port["positions"])
+        n = len(port["positions"])
+        print(f"  {BOLD}TOTAL{RESET}  {total_weight:.1%}  ${total_value:,.0f}  ({n} positions)\n")
 
 
 if __name__ == "__main__":
