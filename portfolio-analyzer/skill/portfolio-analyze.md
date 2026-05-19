@@ -253,18 +253,26 @@ Plan names: `aggressive`, `balanced`, `conservative`, `income`
 
 Example: SCHD with $10,000 invested → est_annual_income = 350 (3.5% yield), not $70 (0.7% plan rate)
 
-**`hold` list** — for EVERY position not in sell or buy. This list must account for all remaining holdings.
+**`hold` list** — provide an entry for every current position NOT in sell or buy.
+
+The HTML template auto-populates hold from `holdings.positions` minus sell/buy tickers, so the report will always show every position even if you omit one. However, **you must still supply hold entries** because the template uses your data for:
+- `current_yield_pct` — used to compute per-position income in the hold table
+- `reason` — displayed as the hold rationale; default is "Retained — no structural change required"
+
 ```python
 {
   "ticker":            str,
-  "shares":            float,   # current share count from holdings data
-  "value":             float,   # current market value from holdings data
-  "current_yield_pct": float,   # estimated dividend/coupon yield for this ticker (0–1 decimal)
-  "reason":            str,     # 1 sentence — WHY it stays; never write "no change needed"
+  "shares":            float,   # from holdings data
+  "value":             float,   # from holdings data
+  "current_yield_pct": float,   # dividend/coupon yield 0–1 decimal; be accurate per ticker:
+                                 #   SCHD→0.035, O→0.055, VNQ→0.04, AGG→0.038, TLT→0.042
+                                 #   MSFT→0.007, AAPL→0.005, NVDA→0.0003, GLD→0.0
+                                 #   T-bills/cash→0.051, HYG→0.062, JEPI→0.071
+  "reason":            str,     # 1 sentence explaining WHY this position is unchanged
 }
 ```
 
-**HOLD COMPLETENESS CHECK**: After building sell+buy lists, list every remaining position from the holdings and put it in hold. If the holdings have 20 positions and sell has 5 and buy has 8 new names, then hold must have at minimum 15 entries (all non-sold current positions). Do NOT summarize or truncate — every ticker gets its own row.
+**Every remaining position needs an entry.** The template falls back to tag-based yield estimates for missing entries, but your per-ticker yield data is more accurate.
 
 **`macro_grid`** — exact keys, no variation:
 ```python
