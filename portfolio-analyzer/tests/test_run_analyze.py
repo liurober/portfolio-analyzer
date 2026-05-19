@@ -47,7 +47,9 @@ def _make_mock_submodules():
     parser_mod.parse = MagicMock(return_value=MOCK_HOLDINGS)
 
     macro_mod = MagicMock()
-    macro_mod.get_macro_context = MagicMock(return_value=MOCK_MACRO)
+    # run_analyze.py imports: from portfolio_analyzer.macro_context import get_macro as get_macro_context
+    # so the attribute on the module is "get_macro", not "get_macro_context"
+    macro_mod.get_macro = MagicMock(return_value=MOCK_MACRO)
 
     metrics_mod = MagicMock()
     metrics_mod.compute_metrics = MagicMock(return_value=MOCK_METRICS)
@@ -120,8 +122,8 @@ class TestRunAnalyze(unittest.TestCase):
 
         # parse was called with the file path
         mocks["portfolio_analyzer.parser"].parse.assert_called_once_with(str(FIXTURE_PATH))
-        # macro context was fetched
-        mocks["portfolio_analyzer.macro_context"].get_macro_context.assert_called_once()
+        # macro context was fetched (imported as: from macro_context import get_macro as get_macro_context)
+        mocks["portfolio_analyzer.macro_context"].get_macro.assert_called_once()
         # metrics were computed
         mocks["portfolio_analyzer.metrics"].compute_metrics.assert_called_once()
         # picks were fetched (4 plan types)
