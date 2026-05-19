@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Analysis Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  h1 { font-size: 22px; font-weight: 700; color: #c084fc; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+  .card { background: #1e293b; border-radius: 10px; padding: 20px; margin-bottom: 20px; border: 1px solid #334155; }
+  h2 { font-size: 16px; font-weight: 600; color: #7dd3fc; margin-bottom: 14px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+  h3 { font-size: 14px; font-weight: 600; color: #94a3b8; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #0f172a; color: #64748b; text-align: left; padding: 8px 10px; font-weight: 500; border-bottom: 1px solid #334155; }
+  td { padding: 7px 10px; border-bottom: 1px solid #1e293b; color: #e2e8f0; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-screener { background: rgba(192,132,252,0.15); color: #c084fc; }
+  .badge-etf      { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+  .badge-reit     { background: rgba(52,211,153,0.15);  color: #34d399; }
+  .badge-live     { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .metric-card { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 12px; text-align: center; }
+  .metric-label { color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+  .metric-value { font-size: 22px; font-weight: 700; margin: 4px 0; }
+  .metric-note  { color: #64748b; font-size: 11px; }
+  .green  { color: #4ade80; }
+  .red    { color: #f87171; }
+  .yellow { color: #fbbf24; }
+  .purple { color: #c084fc; }
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 0; border-bottom: 2px solid #334155; flex-wrap: wrap; }
+  .tab-btn { padding: 8px 16px; background: none; border: none; color: #64748b; cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s; }
+  .tab-btn:hover { color: #e2e8f0; }
+  .tab-btn.active { color: #7dd3fc; border-bottom-color: #7dd3fc; font-weight: 600; }
+  .tab-btn.recommended { color: #fbbf24; }
+  .tab-btn.recommended.active { border-bottom-color: #fbbf24; }
+  .tab-content { display: none; padding-top: 16px; }
+  .tab-content.active { display: block; }
+  .macro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .macro-cell { border-radius: 6px; padding: 10px 12px; }
+  .macro-cell.good { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); }
+  .macro-cell.bad  { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); }
+  .macro-cell.neutral { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.2); }
+  .macro-cell-label { font-size: 11px; color: #94a3b8; font-weight: 500; }
+  .macro-cell-value { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .flag-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #1e293b; }
+  .flag-item:last-child { border-bottom: none; }
+  .flag-rank { min-width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: rgba(248,113,113,0.15); color: #f87171; }
+  .flag-text { flex: 1; color: #e2e8f0; }
+  .flag-impact { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .grade-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .grade-cell { text-align: center; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 10px; }
+  .grade-label { font-size: 10px; color: #64748b; text-transform: uppercase; }
+  .grade-value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .alloc-bar { height: 8px; border-radius: 4px; margin: 4px 0; }
+  .regime-badge { display: inline-block; background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+  .implicit-bet { font-size: 15px; color: #fde68a; font-style: italic; border-left: 3px solid #fbbf24; padding-left: 12px; margin: 12px 0; line-height: 1.5; }
+  .recommended-badge { background: rgba(251,191,36,0.15); color: #fbbf24; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; margin-left: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <h1>Portfolio {% if mode == "build" %}Blueprint{% else %}Analysis{% endif %} Report</h1>
+  <p class="subtitle">
+    {% if macro.data_freshness == "live" %}Live data · {% endif %}
+    {{ macro.regime }} ·
+    {% if holdings.total_value %}${{ "{:,.0f}".format(holdings.total_value) }} · {% endif %}
+    {{ holdings.positions | length }} positions
+  </p>
+
+  <!-- MARKET CONTEXT STRIP -->
+  <div class="card" style="padding: 14px 20px;">
+    <span class="regime-badge">{{ macro.regime }}</span>
+    <div style="display:flex; gap:24px; flex-wrap:wrap; color:#94a3b8; font-size:12px; margin-top:6px;">
+      <span>VIX <strong style="color:#e2e8f0">{{ macro.vix }}</strong></span>
+      <span>3M-10Y <strong style="color:#e2e8f0">{{ "{:+.0f}".format(macro.spread_3m10y_bps) }}bps</strong></span>
+      <span>SPY vs 200D <strong style="color:#e2e8f0">{{ "{:+.1f}".format(macro.spy_vs_200d_pct) }}%</strong></span>
+      <span>Inflation exp <strong style="color:#e2e8f0">{{ macro.inflation_expectations_pct }}%</strong></span>
+      <span>Fed rate <strong style="color:#e2e8f0">{{ macro.fed_rate }}%</strong></span>
+    </div>
+    <p style="color:#64748b; font-size:12px; margin-top:8px;">{{ macro.narrative }}</p>
+    <p style="margin-top:6px; font-size:12px;">&#9733; <strong style="color:#fbbf24">Recommended today:</strong> <span style="color:#fbbf24; text-transform:capitalize;">{{ recommended_plan }}</span></p>
+  </div>
+
+  <!-- MAIN TABS -->
+  <div class="tabs" id="mainTabs">
+    <button class="tab-btn active" onclick="switchTab('main', 'snapshot', this)">Portfolio Snapshot</button>
+    <button class="tab-btn" onclick="switchTab('main', 'metrics', this)">Metrics Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('main', 'bridgewater', this)">Bridgewater Analysis</button>
+    {% if mode != "build" %}
+    <button class="tab-btn" onclick="switchTab('main', 'critique', this)">Critique</button>
+    {% else %}
+    <button class="tab-btn" onclick="switchTab('main', 'rationale', this)">Construction Rationale</button>
+    {% endif %}
+    <button class="tab-btn" onclick="switchTab('main', 'plans', this)">Restructuring Plans</button>
+  </div>
+
+  <!-- SECTION 1: PORTFOLIO SNAPSHOT -->
+  <div id="main-snapshot" class="tab-content active card">
+    <h2>Portfolio Snapshot</h2>
+    {% if mode == "build" %}
+    <p style="color:#64748b; font-style:italic;">Build mode — showing planned allocation.</p>
+    {% endif %}
+    {% if holdings.positions %}
+    <table>
+      <thead><tr><th>Ticker</th><th>Weight</th><th>Value</th><th>Cost Basis</th></tr></thead>
+      <tbody>
+        {% for pos in holdings.positions %}
+        <tr>
+          <td><strong>{{ pos.ticker }}</strong></td>
+          <td>{{ "{:.1%}".format(pos.weight) }}</td>
+          <td>{% if pos.value %}${{ "{:,.0f}".format(pos.value) }}{% else %}&#8212;{% endif %}</td>
+          <td>{% if pos.cost_basis %}${{ "{:,.0f}".format(pos.cost_basis) }}{% else %}&#8212;{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#64748b;">No position data available.</p>
+    {% endif %}
+    {% if metrics.skipped_tickers %}
+    <p style="color:#f87171; font-size:12px; margin-top:10px;">&#9888; Skipped (no market data): {{ metrics.skipped_tickers | join(", ") }}</p>
+    {% endif %}
+  </div>
+
+  <!-- SECTION 2: METRICS DASHBOARD -->
+  <div id="main-metrics" class="tab-content card">
+    <h2>Metrics Dashboard</h2>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Sharpe</div>
+        <div class="metric-value {% if metrics.return_quality.sharpe and metrics.return_quality.sharpe > 1 %}green{% elif metrics.return_quality.sharpe %}yellow{% else %}{% endif %}">
+          {% if metrics.return_quality.sharpe %}{{ "{:.2f}".format(metrics.return_quality.sharpe) }}{% else %}N/A{% endif %}
+        </div>
+        <div class="metric-note">{% if metrics.return_quality.sharpe and metrics.return_quality.sharpe > 1 %}&#8593; Good{% elif metrics.return_quality.sharpe %}&#8212; Moderate{% else %}&#8212;{% endif %}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Beta</div>
+        <div class="metric-value {% if metrics.risk.portfolio_beta and metrics.risk.portfolio_beta > 1.3 %}red{% elif metrics.risk.portfolio_beta %}yellow{% else %}{% endif %}">
+          {% if metrics.risk.portfolio_beta %}{{ "{:.2f}".format(metrics.risk.portfolio_beta) }}{% else %}N/A{% endif %}
+        </div>
+        <div class="metric-note">{% if metrics.risk.portfolio_beta and metrics.risk.portfolio_beta > 1.3 %}&#8593; High{% else %}&#8212;{% endif %}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Max DD</div>
+        <div class="metric-value {% if metrics.risk.max_drawdown and metrics.risk.max_drawdown < -0.3 %}red{% else %}yellow{% endif %}">
+          {% if metrics.risk.max_drawdown %}{{ "{:.0%}".format(metrics.risk.max_drawdown) }}{% else %}N/A{% endif %}
+        </div>
+        <div class="metric-note">{% if metrics.risk.max_drawdown and metrics.risk.max_drawdown < -0.3 %}&#8595; Risk{% else %}&#8212;{% endif %}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Div Yield</div>
+        <div class="metric-value yellow">
+          {% if metrics.income_style.weighted_yield %}{{ "{:.1%}".format(metrics.income_style.weighted_yield) }}{% else %}N/A{% endif %}
+        </div>
+        <div class="metric-note">&#8212;</div>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:8px;">
+      <div>
+        <h3>Concentration</h3>
+        <table>
+          <tr><td>Top position</td><td><strong>{{ "{:.1%}".format(metrics.concentration.top_position_pct) }}</strong></td></tr>
+          <tr><td>Top 5 combined</td><td><strong>{{ "{:.1%}".format(metrics.concentration.top5_combined_pct) }}</strong></td></tr>
+          <tr><td>HHI</td><td><strong>{{ metrics.concentration.hhi }}</strong></td></tr>
+          <tr><td>Positions</td><td><strong>{{ metrics.concentration.num_positions }}</strong></td></tr>
+        </table>
+      </div>
+      <div>
+        <h3>Risk</h3>
+        <table>
+          <tr><td>Ann. volatility</td><td><strong>{% if metrics.risk.annualized_vol %}{{ "{:.1%}".format(metrics.risk.annualized_vol) }}{% else %}N/A{% endif %}</strong></td></tr>
+          <tr><td>VaR 95% 1-day</td><td><strong>{% if metrics.risk.var_95_1d %}${{ "{:,.0f}".format(metrics.risk.var_95_1d) }}{% else %}N/A{% endif %}</strong></td></tr>
+          <tr><td>Avg correlation</td><td><strong>{% if metrics.risk.avg_correlation %}{{ "{:.2f}".format(metrics.risk.avg_correlation) }}{% else %}N/A{% endif %}</strong></td></tr>
+          <tr><td>Sortino</td><td><strong>{% if metrics.return_quality.sortino %}{{ "{:.2f}".format(metrics.return_quality.sortino) }}{% else %}N/A{% endif %}</strong></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: BRIDGEWATER ANALYSIS -->
+  <div id="main-bridgewater" class="tab-content card">
+    <h2>Bridgewater Analysis</h2>
+    {% if analysis.implicit_bet %}
+    <h3>Implicit Bet</h3>
+    <div class="implicit-bet">{{ analysis.implicit_bet }}</div>
+    {% endif %}
+    <h3 style="margin-top:16px;">Macro Regime Sensitivity</h3>
+    <div class="macro-grid">
+      <div class="macro-cell good">
+        <div class="macro-cell-label">Rising Growth + Low Inflation</div>
+        <div class="macro-cell-value green">
+          {% if analysis.plans and analysis.plans.aggressive and analysis.plans.aggressive.macro_grid %}
+            {{ analysis.plans.aggressive.macro_grid.rising_growth_low_inflation }}
+          {% else %}&#8212;{% endif %}
+        </div>
+      </div>
+      <div class="macro-cell neutral">
+        <div class="macro-cell-label">Rising Growth + Rising Inflation</div>
+        <div class="macro-cell-value yellow">
+          {% if analysis.plans and analysis.plans.balanced and analysis.plans.balanced.macro_grid %}
+            {{ analysis.plans.balanced.macro_grid.rising_growth_rising_inflation }}
+          {% else %}&#8212;{% endif %}
+        </div>
+      </div>
+      <div class="macro-cell bad">
+        <div class="macro-cell-label">Stagflation</div>
+        <div class="macro-cell-value red">
+          {% if analysis.plans and analysis.plans.conservative and analysis.plans.conservative.macro_grid %}
+            {{ analysis.plans.conservative.macro_grid.stagflation }}
+          {% else %}&#8212;{% endif %}
+        </div>
+      </div>
+      <div class="macro-cell bad">
+        <div class="macro-cell-label">Deflation / Recession</div>
+        <div class="macro-cell-value red">
+          {% if analysis.plans and analysis.plans.conservative and analysis.plans.conservative.macro_grid %}
+            {{ analysis.plans.conservative.macro_grid.deflation_recession }}
+          {% else %}&#8212;{% endif %}
+        </div>
+      </div>
+    </div>
+    <h3 style="margin-top:16px;">Asset Class Breakdown</h3>
+    <div style="font-size:13px;">
+      {% set styles = [("Equity", metrics.income_style.equity_pct, "#60a5fa"), ("Bonds", metrics.income_style.bond_pct, "#4ade80"), ("Alts", metrics.income_style.alt_pct, "#fbbf24")] %}
+      {% for label, pct, color in styles %}
+      <div style="margin-bottom:8px;">
+        <div style="display:flex; justify-content:space-between;"><span>{{ label }}</span><span>{{ "{:.1%}".format(pct) }}</span></div>
+        <div class="alloc-bar" style="background:#1e293b; width:100%;"><div class="alloc-bar" style="background:{{ color }}; width:{{ "{:.0%}".format(pct) }};"></div></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- SECTION 4: CRITIQUE or CONSTRUCTION RATIONALE -->
+  {% if mode != "build" %}
+  <div id="main-critique" class="tab-content card">
+    <h2>Critique</h2>
+    {% if analysis.red_flags %}
+    <h3>Red Flags</h3>
+    {% for flag in analysis.red_flags %}
+    <div class="flag-item">
+      <div class="flag-rank">{{ flag.rank }}</div>
+      <div>
+        <div class="flag-text">{{ flag.flag }}</div>
+        <div class="flag-impact">Impact: {{ flag.impact_est }}</div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% if analysis.green_flags %}
+    <h3 style="margin-top:16px;">Green Flags</h3>
+    {% for flag in analysis.green_flags %}
+    <div style="padding:6px 0; border-bottom:1px solid #1e293b; color:#4ade80; font-size:13px;">&#183; {{ flag }}</div>
+    {% endfor %}
+    {% endif %}
+    {% if analysis.grades %}
+    <h3 style="margin-top:16px;">Portfolio Grades</h3>
+    <div class="grade-grid">
+      {% for dim, grade in analysis.grades.items() %}
+      <div class="grade-cell">
+        <div class="grade-label">{{ dim.replace("_", " ") }}</div>
+        <div class="grade-value {% if grade[0] in ['A'] %}green{% elif grade[0] in ['B'] %}yellow{% else %}red{% endif %}">{{ grade }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div id="main-rationale" class="tab-content card">
+    <h2>Construction Rationale</h2>
+    <p style="color:#94a3b8;">{{ analysis.construction_rationale if analysis.construction_rationale else "See individual plan tabs for rationale." }}</p>
+  </div>
+  {% endif %}
+
+  <!-- SECTION 5: RESTRUCTURING PLANS -->
+  <div id="main-plans" class="tab-content card">
+    <h2>Restructuring Plans</h2>
+    <div class="tabs" id="planTabs">
+      {% for plan_name in ["aggressive", "balanced", "conservative", "income"] %}
+      <button
+        class="tab-btn {% if loop.first %}active{% endif %} {% if plan_name == recommended_plan %}recommended{% endif %}"
+        onclick="switchTab('plan', '{{ plan_name }}', this)">
+        {{ plan_name | title }}
+        {% if plan_name == recommended_plan %}<span class="recommended-badge">&#9733; Today</span>{% endif %}
+      </button>
+      {% endfor %}
+    </div>
+
+    {% for plan_name in ["aggressive", "balanced", "conservative", "income"] %}
+    {% set plan = analysis.plans[plan_name] if analysis.plans and plan_name in analysis.plans else {} %}
+    <div id="plan-{{ plan_name }}" class="tab-content {% if loop.first %}active{% endif %}" style="padding-top:16px;">
+
+      {% if plan.rationale %}
+      <p style="color:#94a3b8; font-size:13px; margin-bottom:16px; font-style:italic;">{{ plan.rationale }}</p>
+      {% endif %}
+
+      {% if mode != "build" and plan.sell %}
+      <h3>Sell / Reduce</h3>
+      <table style="margin-bottom:16px;">
+        <thead><tr><th>Ticker</th><th>Action</th><th>Proceeds</th><th>Reason</th></tr></thead>
+        <tbody>
+          {% for item in plan.sell %}
+          <tr>
+            <td><strong>{{ item.ticker }}</strong></td>
+            <td style="color:#f87171;">{{ item.action }}</td>
+            <td>${{ "{:,.0f}".format(item.proceeds) }}</td>
+            <td style="color:#94a3b8;">{{ item.reason }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      {% if plan.buy %}
+      <h3>Buy</h3>
+      <table style="margin-bottom:16px;">
+        <thead><tr><th>Ticker</th><th>Reason</th><th>% Port</th><th>$ to Invest</th><th>Tag</th></tr></thead>
+        <tbody>
+          {% for item in plan.buy %}
+          <tr>
+            <td><strong>{{ item.ticker }}</strong></td>
+            <td style="color:#94a3b8; font-size:12px;">{{ item.reason }}</td>
+            <td>{{ "{:.1%}".format(item.pct) }}</td>
+            <td><strong>${{ "{:,.0f}".format(item.dollars) }}</strong></td>
+            <td><span class="badge badge-{{ item.tag | lower }}">{{ item.tag }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      {% if mode != "build" and plan.hold %}
+      <h3>Hold</h3>
+      <table style="margin-bottom:16px;">
+        <thead><tr><th>Ticker</th><th>Yield</th><th>Value</th></tr></thead>
+        <tbody>
+          {% for item in plan.hold %}
+          <tr>
+            <td><strong>{{ item.ticker }}</strong></td>
+            <td>{{ "{:.1%}".format(item.yield_pct) if item.yield_pct else "&#8212;" }}</td>
+            <td>${{ "{:,.0f}".format(item.value) if item.value else "&#8212;" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      {% if plan.target_metrics %}
+      <h3>Target Metrics</h3>
+      <div class="metric-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom:16px;">
+        <div class="metric-card"><div class="metric-label">Beta</div><div class="metric-value yellow">{{ plan.target_metrics.beta }}</div></div>
+        <div class="metric-card"><div class="metric-label">Sharpe est</div><div class="metric-value green">{{ plan.target_metrics.sharpe_est }}</div></div>
+        <div class="metric-card"><div class="metric-label">Max DD est</div><div class="metric-value red">{{ "{:.0%}".format(plan.target_metrics.max_dd_est) }}</div></div>
+        <div class="metric-card"><div class="metric-label">Equity %</div><div class="metric-value">{{ "{:.0%}".format(plan.target_metrics.equity_pct) }}</div></div>
+        <div class="metric-card"><div class="metric-label">Yield est</div><div class="metric-value">{{ "{:.1%}".format(plan.target_metrics.yield_pct) }}</div></div>
+      </div>
+      {% endif %}
+
+      {% if plan.macro_grid %}
+      <h3>Macro Regime Grid</h3>
+      <div class="macro-grid">
+        <div class="macro-cell good"><div class="macro-cell-label">Rising Growth + Low Inflation</div><div class="macro-cell-value green">{{ plan.macro_grid.rising_growth_low_inflation }}</div></div>
+        <div class="macro-cell neutral"><div class="macro-cell-label">Rising Growth + Rising Inflation</div><div class="macro-cell-value yellow">{{ plan.macro_grid.rising_growth_rising_inflation }}</div></div>
+        <div class="macro-cell bad"><div class="macro-cell-label">Stagflation</div><div class="macro-cell-value red">{{ plan.macro_grid.stagflation }}</div></div>
+        <div class="macro-cell bad"><div class="macro-cell-label">Deflation / Recession</div><div class="macro-cell-value red">{{ plan.macro_grid.deflation_recession }}</div></div>
+      </div>
+      {% endif %}
+
+      {% if plan.fit_grade %}
+      <p style="margin-top:12px; font-size:13px; color:#64748b;">Fit grade vs current portfolio: <strong style="color:#fbbf24;">{{ plan.fit_grade }}</strong></p>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+  </div>
+
+</div><!-- /container -->
+
+<script>
+function switchTab(group, id, btn) {
+  // Hide all content in this group
+  document.querySelectorAll('[id^="' + group + '-"]').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  // Deactivate all buttons in the same tab bar
+  var tabBar = btn.closest('.tabs');
+  if (tabBar) {
+    tabBar.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  }
+  // Show selected content and activate button
+  var target = document.getElementById(group + '-' + id);
+  if (target) target.classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
