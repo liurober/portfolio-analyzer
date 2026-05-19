@@ -55,6 +55,34 @@ ANALYSIS = {
         "Strong momentum across top holdings",
         "Above-average yield for growth portfolio",
     ],
+    "plans": {
+        "aggressive": {
+            "rationale": "High-conviction equity growth tilt.",
+            "fit_grade": "A",
+            "sell": [{"ticker": "BND", "action": "Exit", "proceeds": 5000.0, "reason": "No role in aggressive plan."}],
+            "buy": [{"ticker": "QQQ", "pct": 0.10, "dollars": 12500.0, "reason": "Core growth.", "tag": "ETF", "est_annual_income": 88.0}],
+            "hold": [{"ticker": "AAPL", "reason": "Retain mega-cap quality."}],
+            "macro_grid": {
+                "Rising Growth + Low Inflation": "+18% to +25%",
+                "Rising Growth + Rising Inflation": "+8% to +14%",
+                "Stagflation": "-20% to -30%",
+                "Deflation / Recession": "-25% to -35%",
+            },
+        },
+        "balanced": {
+            "rationale": "Blended equity/bond for stability.",
+            "fit_grade": "B+",
+            "sell": [],
+            "buy": [{"ticker": "AGG", "pct": 0.10, "dollars": 12500.0, "reason": "Bond ballast.", "tag": "ETF", "est_annual_income": 437.0}],
+            "hold": [{"ticker": "AAPL", "reason": "Core equity hold."}],
+            "macro_grid": {
+                "Rising Growth + Low Inflation": "+12% to +18%",
+                "Rising Growth + Rising Inflation": "+5% to +10%",
+                "Stagflation": "-10% to -18%",
+                "Deflation / Recession": "-8% to -15%",
+            },
+        },
+    },
 }
 
 
@@ -154,8 +182,13 @@ def test_save_note_green_flags_bulleted(tmp_vault):
     assert "- Strong momentum across top holdings" in content
 
 
-def test_save_note_restructuring_plans_links(tmp_vault):
+def test_save_note_restructuring_plans_inline(tmp_vault):
+    """Plans are rendered inline in the note (sell/buy/hold tables), not as wiki-links."""
     path = save_note(HOLDINGS, MACRO, METRICS, ANALYSIS, DATE_STR)
     content = Path(path).read_text(encoding="utf-8")
-    assert f"[[{DATE_STR}-aggressive-plan]]" in content
-    assert f"[[{DATE_STR}-balanced-plan]]" in content
+    # Each plan generates a section header
+    assert "### Aggressive Plan" in content
+    assert "### Balanced Plan" in content
+    # Buy and sell tables are present
+    assert "**Sell / Reduce**" in content
+    assert "**Buy**" in content
