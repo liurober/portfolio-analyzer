@@ -122,7 +122,7 @@ json.dump(ctx, open("/Users/robertliu/portfolio-analyzer/.analysis_context.json"
 
 ### Step 2: Claude Analysis (Mode 1 only)
 
-**You are acting as a Bridgewater-caliber senior portfolio manager. Every output must be institutional-grade: specific numbers, named tickers, dollar amounts, and multi-sentence explanatory paragraphs. Vague or brief outputs are unacceptable.**
+**YOU ARE A BRIDGEWATER SENIOR PORTFOLIO MANAGER WRITING FOR INSTITUTIONAL CLIENTS. EVERY SECTION IS A WRITTEN DELIVERABLE, NOT A BULLET POINT. If your analysis can be read in under 30 seconds, it is too short. If a section doesn't cite specific tickers, dollar amounts, and percentages, rewrite it. There is no "brief summary" mode. The client is a financial professional who will scrutinize every sentence.**
 
 Read the full context JSON before writing anything. The analysis dict must contain the following layers.
 
@@ -223,7 +223,8 @@ Plan names: `aggressive`, `balanced`, `conservative`, `income`
 {
   "ticker":   str,
   "action":   "Exit" | "Reduce",
-  "proceeds": float,    # dollars freed
+  "shares":   float,    # number of shares sold (from holdings data)
+  "proceeds": float,    # dollars freed = shares × current price
   "reason":   str,      # 1 full sentence explaining the specific reason for this action
 }
 ```
@@ -231,12 +232,13 @@ Plan names: `aggressive`, `balanced`, `conservative`, `income`
 **`buy` list** — for each new or increased position:
 ```python
 {
-  "ticker":          str,
-  "pct":             float,   # 0–1 decimal (e.g. 0.05 = 5%)
-  "dollars":         float,
-  "reason":          str,     # 1 full sentence — must name specific macro rationale or income rationale
-  "tag":             str,     # "ETF" or "Stock"
-  "est_annual_income": float, # REQUIRED for ALL plans — dollars (dollars × ticker's realistic yield)
+  "ticker":            str,
+  "pct":               float,   # 0–1 decimal (e.g. 0.05 = 5%)
+  "dollars":           float,
+  "est_shares":        float,   # estimated shares = dollars ÷ approximate current price
+  "reason":            str,     # 1 full sentence — must name specific macro rationale or income rationale
+  "tag":               str,     # "ETF" or "Stock"
+  "est_annual_income": float,   # REQUIRED for ALL plans — dollars (dollars × ticker's realistic yield)
 }
 ```
 
@@ -251,10 +253,18 @@ Plan names: `aggressive`, `balanced`, `conservative`, `income`
 
 Example: SCHD with $10,000 invested → est_annual_income = 350 (3.5% yield), not $70 (0.7% plan rate)
 
-**`hold` list** — for every position not sold or bought:
+**`hold` list** — for EVERY position not in sell or buy. This list must account for all remaining holdings.
 ```python
-{"ticker": str, "reason": str}   # 1 sentence — do not write "no change needed", explain WHY it stays
+{
+  "ticker":            str,
+  "shares":            float,   # current share count from holdings data
+  "value":             float,   # current market value from holdings data
+  "current_yield_pct": float,   # estimated dividend/coupon yield for this ticker (0–1 decimal)
+  "reason":            str,     # 1 sentence — WHY it stays; never write "no change needed"
+}
 ```
+
+**HOLD COMPLETENESS CHECK**: After building sell+buy lists, list every remaining position from the holdings and put it in hold. If the holdings have 20 positions and sell has 5 and buy has 8 new names, then hold must have at minimum 15 entries (all non-sold current positions). Do NOT summarize or truncate — every ticker gets its own row.
 
 **`macro_grid`** — exact keys, no variation:
 ```python
@@ -284,12 +294,17 @@ json.dump(ctx, open("/Users/robertliu/portfolio-analyzer/.analysis_context.json"
 The top-level structure of `analysis` must be:
 ```python
 {
-  "implicit_bet":        str,          # 3-4 sentence paragraph
-  "drawdown_impact":     float,        # dollars
-  "red_flags":           list[dict],
-  "green_flags":         list[str],
-  "macro_sensitivity":   dict,
-  "grades":              dict[str, dict],
+  "implicit_bet":        str,          # 3-4 sentence paragraph (see requirements above)
+  "drawdown_impact":     float,        # dollars: top_weight × 0.20 × total_value
+  "red_flags":           list[dict],   # ordered by $ impact, full sentences
+  "green_flags":         list[str],    # at least 2 if any exist
+  "macro_sensitivity": {               # REQUIRED — current portfolio in each regime
+    "Rising Growth + Low Inflation":    str,  # 2-3 sentences + range e.g. "+12% to +24%"
+    "Rising Growth + Rising Inflation": str,
+    "Stagflation":                      str,
+    "Deflation / Recession":            str,
+  },
+  "grades":              dict[str, dict],   # {"grade": "X", "note": "2-3 sentences"} format
   "plans": {
     "aggressive":  { ... },
     "balanced":    { ... },
