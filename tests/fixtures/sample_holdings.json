@@ -1,0 +1,11 @@
+{
+  "positions": [
+    {"ticker": "NVDA", "weight": 0.12, "value": 17076.0, "cost_basis": 8000.0, "shares": null},
+    {"ticker": "AAPL", "weight": 0.10, "value": 14230.0, "cost_basis": 10000.0, "shares": null},
+    {"ticker": "MSFT", "weight": 0.09, "value": 12807.0, "cost_basis": 9000.0, "shares": null},
+    {"ticker": "JPM",  "weight": 0.07, "value": 9961.0,  "cost_basis": 8000.0, "shares": null},
+    {"ticker": "BND",  "weight": 0.05, "value": 7115.0,  "cost_basis": 7200.0, "shares": null}
+  ],
+  "total_value": 142300.0,
+  "data_completeness": "full"
+}
