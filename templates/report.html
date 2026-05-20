@@ -387,7 +387,27 @@
     {% set plan = analysis.plans[plan_name] if analysis.plans and plan_name in analysis.plans else {} %}
     {% set am = arch_metrics[plan_name] %}
     {% set portfolio_value = holdings.total_value if holdings.total_value else 0 %}
-    {% set annual_income = portfolio_value * am.yield_est %}
+    {# Tag-based yield fallback (shared by callout pre-compute and hold table below) #}
+    {% set tag_yield = {"reit": 0.045, "real_asset": 0.01, "bond": 0.04, "cash": 0.051, "screener": 0.008} %}
+
+    {# ── Pre-compute income so the callout exactly matches row sums below ── #}
+    {% set ns_pre = namespace(buy_income=0.0, hold_income=0.0) %}
+    {% for item in plan.buy if plan.buy %}
+      {% set ii = item.est_annual_income if item.est_annual_income is defined and item.est_annual_income else (item.dollars * am.yield_est if item.dollars else 0) %}
+      {% set ns_pre.buy_income = ns_pre.buy_income + ii %}
+    {% endfor %}
+    {% set pre_sold    = plan.sell | map(attribute="ticker") | list if plan.sell else [] %}
+    {% set pre_bought  = plan.buy  | map(attribute="ticker") | list if plan.buy  else [] %}
+    {% for pos in holdings.positions %}
+      {% if pos.ticker not in pre_sold and pos.ticker not in pre_bought %}
+        {% set pre_matched = plan.hold | selectattr("ticker", "equalto", pos.ticker) | list if plan.hold else [] %}
+        {% set pre_h = pre_matched[0] if pre_matched else {} %}
+        {% set pre_y = pre_h.current_yield_pct if pre_h and pre_h.current_yield_pct is defined and pre_h.current_yield_pct else tag_yield.get(pos.tag, 0.008) %}
+        {% set ns_pre.hold_income = ns_pre.hold_income + (pos.value * pre_y if pos.value else 0) %}
+      {% endif %}
+    {% endfor %}
+    {% set annual_income = ns_pre.buy_income + ns_pre.hold_income %}
+
     <div id="plan-{{ plan_name }}" class="tab-content {% if loop.first %}active{% endif %}" style="padding-top:16px;">
 
       <!-- Income callout: full post-restructure portfolio income estimate -->
@@ -400,16 +420,22 @@
           {% if portfolio_value %}
             ${{ "{:,.0f}".format(annual_income / 12) }}/mo &nbsp;·&nbsp;
             ${{ "{:,.0f}".format(annual_income / 52) }}/wk &nbsp;·&nbsp;
-            Archetype yield est {{ "{:.1%}".format(am.yield_est) }} × ${{ "{:,.0f}".format(portfolio_value) }} AUM
+            Buy income ${{ "{:,.0f}".format(ns_pre.buy_income) }} + Hold income ${{ "{:,.0f}".format(ns_pre.hold_income) }}
           {% endif %}
         </div>
       </div>
 
       <!-- Plan metrics summary -->
-      <div class="metric-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom:16px;">
+      <div class="metric-grid" style="grid-template-columns: repeat(6, 1fr); margin-bottom:16px;">
         <div class="metric-card">
           <div class="metric-label">Beta est</div>
           <div class="metric-value yellow">{{ am.beta_est }}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Sharpe est</div>
+          <div class="metric-value {% if plan.sharpe_est and plan.sharpe_est >= 1.0 %}green{% elif plan.sharpe_est and plan.sharpe_est >= 0.6 %}yellow{% else %}red{% endif %}">
+            {% if plan.sharpe_est is defined and plan.sharpe_est %}{{ "{:.2f}".format(plan.sharpe_est) }}{% else %}&#8212;{% endif %}
+          </div>
         </div>
         <div class="metric-card">
           <div class="metric-label">Yield est</div>
@@ -425,7 +451,7 @@
         </div>
         <div class="metric-card">
           <div class="metric-label">Macro Fit</div>
-          <div class="metric-value {% if plan_name == recommended_plan %}yellow{% else %}{% endif %}">
+          <div class="metric-value {% if plan_name == recommended_plan %}yellow{% endif %}">
             {% if plan.macro_fit_score %}{{ "{:.1f}".format(plan.macro_fit_score) }}/5{% else %}&#8212;{% endif %}
           </div>
         </div>
@@ -501,8 +527,7 @@
       #}
       {% set sold_tickers  = plan.sell | map(attribute="ticker") | list if plan.sell else [] %}
       {% set bought_tickers = plan.buy  | map(attribute="ticker") | list if plan.buy  else [] %}
-      {# Tag-based yield fallback for positions where Claude didn't supply yield #}
-      {% set tag_yield = {"reit": 0.045, "real_asset": 0.01, "bond": 0.04, "cash": 0.051, "screener": 0.008} %}
+      {# tag_yield already defined above for callout pre-compute; reused here #}
       {# Collect hold positions: all current holdings not in sell or buy #}
       {% set ns2 = namespace(hold_count=0, hold_income=0.0) %}
       {% for pos in holdings.positions %}
