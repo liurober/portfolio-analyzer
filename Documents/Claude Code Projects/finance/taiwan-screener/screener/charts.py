@@ -15,6 +15,30 @@ from typing import Any
 
 import matplotlib
 matplotlib.use("Agg")
+
+# CJK font detection — must run before any plt calls
+def _set_cjk_font() -> None:
+    import matplotlib.font_manager as fm
+    candidates = [
+        "PingFang SC",        # macOS (newer)
+        "Heiti SC",           # macOS
+        "STHeiti",            # macOS fallback
+        "Arial Unicode MS",   # macOS bundled
+        "Noto Sans CJK SC",   # Linux (Simplified)
+        "Noto Sans CJK TC",   # Linux (Traditional)
+        "Noto Sans CJK",
+        "WenQuanYi Micro Hei",
+    ]
+    available = {f.name for f in fm.fontManager.ttflist}
+    for name in candidates:
+        if name in available:
+            matplotlib.rcParams["font.family"] = name
+            break
+    # Prevent minus sign rendering as a missing glyph box
+    matplotlib.rcParams["axes.unicode_minus"] = False
+
+_set_cjk_font()
+
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
@@ -52,6 +76,7 @@ def build_chart(df: pd.DataFrame, symbol: str, name_zh: str,
         "savefig.facecolor": BG, "axes.edgecolor": FG,
         "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
         "text.color": FG, "axes.titlecolor": FG, "grid.color": "#1f2933",
+        "axes.unicode_minus": False,
     })
 
     fig = plt.figure(figsize=(11, 8))
