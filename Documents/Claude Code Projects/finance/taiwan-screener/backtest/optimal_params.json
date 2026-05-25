@@ -10,7 +10,7 @@
     "target_mult": 2.5,
     "hold_weeks": 5,
     "min_price": 10,
-    "max_price": 100,
+    "max_price": 5000,
     "min_vol_k": 500,
     "bb_period": 20,
     "ma_fast": 20,

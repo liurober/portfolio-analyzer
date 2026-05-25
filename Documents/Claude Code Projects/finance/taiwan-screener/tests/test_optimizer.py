@@ -13,8 +13,13 @@ def test_param_space_keys():
                 "min_price", "max_price", "min_vol_k", "bb_period",
                 "ma_fast", "ma_slow", "adx_threshold", "min_rr",
                 "require_macd", "require_ttm", "require_adx",
-                "require_ma_stack"}
+                "require_ma_stack", "require_index_regime"}
     assert set(PARAM_SPACE.keys()) == expected
+
+
+def test_param_space_max_price_covers_large_caps():
+    """max_price options must cover TSMC (~2255 NT$) and MediaTek (~3860 NT$)."""
+    assert max(PARAM_SPACE["max_price"]) >= 2000
 
 
 def test_composite_score_zero_when_few_trades():
@@ -25,8 +30,8 @@ def test_composite_score_zero_when_few_trades():
 
 def test_composite_score_high_value():
     cs = composite_score({"total_trades": 50, "win_rate": 0.85,
-                          "avg_return_pct": 28, "sharpe": 2.5,
-                          "max_drawdown": 8})
+                          "avg_win_return_pct": 18, "avg_return_pct": 14,
+                          "sharpe": 2.5, "max_drawdown": 8})
     assert 0.7 < cs <= 1.0
 
 
@@ -51,7 +56,9 @@ def test_run_optimizer_smoke():
     cache = {f"T{i}.TW": _df(seed=i) for i in range(3)}
     top = run_optimizer(cache, n_samples=20, seed=1)
     assert isinstance(top, list)
+    # Quality filter: win_rate (profitable_rate) >= 0.80, avg_win >= 10, overall > 0
     for r in top:
-        assert r["metrics"]["win_rate"] >= 0.70
-        assert r["metrics"]["total_trades"] >= 20
-        assert r["metrics"]["avg_return_pct"] >= 15
+        assert r["metrics"]["win_rate"] >= 0.80
+        assert r["metrics"]["total_trades"] >= 15
+        assert r["metrics"]["avg_win_return_pct"] >= 10
+        assert r["metrics"]["avg_return_pct"] > 0

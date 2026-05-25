@@ -70,8 +70,38 @@ def append_to_picks_log(picks: list, params_version: str) -> None:
                          encoding="utf-8")
 
 
+def _market_in_uptrend() -> bool:
+    """Return True if 0050.TW (Taiwan 50 ETF) is above its 52-week MA.
+
+    Used as a market-regime gate: when the market is in a downtrend, even
+    valid signals have a lower profitable rate.  If data cannot be fetched,
+    returns True so the screener continues rather than silently skipping.
+    """
+    try:
+        df = yf.download("0050.TW", period="2y", interval="1wk",
+                         auto_adjust=True, progress=False, threads=False)
+        if df is None or df.empty:
+            return True
+        if isinstance(df.columns, __import__("pandas").MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        close = df["Close"].dropna()
+        if len(close) < 52:
+            return True
+        return float(close.iloc[-1]) >= float(close.tail(52).mean())
+    except Exception:
+        return True
+
+
 def main() -> int:
     params, params_version = load_params()
+
+    # ── Market regime gate ────────────────────────────────────────────────────
+    if params.get("require_index_regime", False):
+        if not _market_in_uptrend():
+            print("[main] ⚠️  market regime: 0050.TW below 52w MA — skipping scan")
+            return 0
+        print("[main] ✅ market regime: uptrend confirmed")
+
     universe = load_universe()
     print(f"[main] universe={len(universe)}  params_version={params_version}")
 

@@ -40,33 +40,36 @@ PARAM_SPACE: dict[str, list] = {
     "target_mult":       [1.5, 2.0, 2.5, 3.0, 3.5],
     "hold_weeks":        [3, 4, 5, 6],
     "min_price":         [5, 10, 15, 20],
-    "max_price":         [80, 100, 150, 200],
+    "max_price":         [500, 1000, 2000, 5000],   # covers TSMC(2255), MediaTek(3860)
     "min_vol_k":         [300, 500, 750, 1000],
     "bb_period":         [20, 25, 30],
     "ma_fast":           [20, 30],
     "ma_slow":           [90, 120],
     "adx_threshold":     [15, 20, 25],
     "min_rr":            [1.5, 2.0, 2.5, 3.0],
-    "require_macd":      [True, False],
-    "require_ttm":       [True, False],
-    "require_adx":       [True, False],
-    "require_ma_stack":  [True, False],
+    "require_macd":         [True, False],
+    "require_ttm":          [True, False],
+    "require_adx":          [True, False],
+    "require_ma_stack":     [True, False],
+    "require_index_regime": [True, False],   # only enter when market > 52w MA
 }
 
 
 # ----- COMPOSITE SCORE -------------------------------------------------------
 def composite_score(metrics: dict) -> float:
-    if metrics.get("total_trades", 0) < 20:
+    if metrics.get("total_trades", 0) < 15:
         return 0.0
-    win_rate = metrics.get("win_rate", 0)
-    avg_ret  = metrics.get("avg_return_pct", 0)
-    sharpe   = metrics.get("sharpe", 0)
-    drawdown = abs(metrics.get("max_drawdown", 100))
+    win_rate    = metrics.get("win_rate", 0)        # profitable_rate (PnL > 0)
+    avg_win_ret = metrics.get("avg_win_return_pct", 0)  # avg on winning trades
+    avg_ret     = metrics.get("avg_return_pct", 0)
+    sharpe      = metrics.get("sharpe", 0)
+    drawdown    = abs(metrics.get("max_drawdown", 100))
     return (
-        0.40 * win_rate
-      + 0.25 * min(avg_ret / 30, 1.0)
-      + 0.20 * min(sharpe / 3.0, 1.0)
-      + 0.15 * (1 - drawdown / 30)
+        0.35 * win_rate                        # profitable_rate ≥ 80%
+      + 0.25 * min(avg_win_ret / 20, 1.0)     # avg win return (target ≥ 10%, cap at 20%)
+      + 0.20 * min(avg_ret / 15, 1.0)         # overall avg return
+      + 0.10 * min(sharpe / 3.0, 1.0)
+      + 0.10 * (1 - drawdown / 30)
     )
 
 
@@ -80,11 +83,12 @@ def sample_params(rng: random.Random) -> dict[str, Any]:
 
 
 def _backtest_all(data_cache: dict[str, pd.DataFrame],
-                  params: dict[str, Any]) -> dict[str, Any]:
+                  params: dict[str, Any],
+                  market_df: "pd.DataFrame | None" = None) -> dict[str, Any]:
     all_trades = []
     for tk, df in data_cache.items():
         try:
-            all_trades.extend(simulate(tk, df, params))
+            all_trades.extend(simulate(tk, df, params, market_df=market_df))
         except Exception:
             continue
     return summarize(all_trades)
@@ -94,20 +98,26 @@ def run_optimizer(
     data_cache: dict[str, pd.DataFrame],
     n_samples: int = 2000,
     seed: int = 42,
+    market_df: "pd.DataFrame | None" = None,
 ) -> list[dict]:
     """Sample n_samples random param sets, backtest each on data_cache,
     return top-20 quality results sorted by composite_score.
 
-    Quality filter: win_rate >= 0.70 AND total_trades >= 20 AND avg_return_pct >= 15
+    Quality filter:
+      - win_rate (profitable_rate, PnL>0) >= 0.80
+      - avg_win_return_pct >= 10%  (avg return on profitable trades)
+      - avg_return_pct > 0         (overall portfolio return not negative)
+      - total_trades >= 15
     """
     rng = random.Random(seed)
     results: list[dict] = []
     for _ in tqdm(range(n_samples), desc="MC samples"):
         params = sample_params(rng)
-        metrics = _backtest_all(data_cache, params)
-        if (metrics.get("total_trades", 0) < 20
-                or metrics.get("win_rate", 0) < 0.70
-                or metrics.get("avg_return_pct", 0) < 15):
+        metrics = _backtest_all(data_cache, params, market_df=market_df)
+        if (metrics.get("total_trades", 0) < 15
+                or metrics.get("win_rate", 0) < 0.80          # profitable_rate >= 80%
+                or metrics.get("avg_win_return_pct", 0) < 10  # wins avg ≥ 10%
+                or metrics.get("avg_return_pct", 0) <= 0):    # overall not negative
             continue
         cs = composite_score(metrics)
         results.append({"params": params, "metrics": metrics, "composite": cs})

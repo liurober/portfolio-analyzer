@@ -1,6 +1,7 @@
 from finance_tw_path import ensure_path  # noqa: F401
 import numpy as np
 import pandas as pd
+import pytest
 from dataclasses import asdict
 
 from backtest.engine import simulate, summarize, TradeResult
@@ -40,6 +41,8 @@ def test_summarize_empty():
 
 
 def test_summarize_basic():
+    # trade 1: strict win (target hit), PnL +25%
+    # trade 2: strict loss (stop hit), PnL -10%
     t = [TradeResult("X.TW", "2024-01-01", 20, 18, 25, "2024-02-01", 25,
                      "win", 25.0, 4, 6),
          TradeResult("X.TW", "2024-03-01", 20, 18, 25, "2024-04-01", 18,
@@ -47,4 +50,22 @@ def test_summarize_basic():
     s = summarize(t)
     assert s["total_trades"] == 2
     assert s["wins"] == 1
-    assert s["win_rate"] == 0.5
+    assert s["losses"] == 1
+    assert s["strict_win_rate"] == 0.5          # target actually hit
+    assert s["win_rate"] == 0.5                  # profitable (PnL > 0) = 1/2
+    assert s["profitable"] == 1
+    assert s["avg_win_return_pct"] == 25.0       # only profitable trade avg
+
+
+def test_summarize_profitable_rate():
+    """Three neutral trades: 2 profitable (+5%, +3%), 1 unprofitable (-1%)."""
+    t = [TradeResult("X.TW", "2024-01-01", 20, 18, 25, "2024-02-01", 21,
+                     "neutral", 5.0, 5, 6),
+         TradeResult("X.TW", "2024-03-01", 20, 18, 25, "2024-04-01", 20.6,
+                     "neutral", 3.0, 5, 6),
+         TradeResult("X.TW", "2024-05-01", 20, 18, 25, "2024-06-01", 19.8,
+                     "neutral", -1.0, 5, 6)]
+    s = summarize(t)
+    assert s["strict_win_rate"] == 0.0           # no target hit
+    assert s["win_rate"] == pytest.approx(2/3)   # 2 of 3 profitable
+    assert s["avg_win_return_pct"] == pytest.approx(4.0)  # (5+3)/2

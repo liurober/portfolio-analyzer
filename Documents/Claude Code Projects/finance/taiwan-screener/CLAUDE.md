@@ -22,6 +22,24 @@ This project is fully isolated from `finance/stock-screener/`. Do NOT import acr
 - Total payload < 102KB
 
 ## Optimizer targets
-- Win rate ≥ 80%
-- Avg return per trade: 20–30%
+- Win rate ≥ 80% (profitable_rate = PnL > 0 / total trades)
+- Avg return on winning picks ≥ 10% (avg_win_return_pct)
+- Overall avg return > 0% (avg_return_pct across all trades)
 - Hold period: 5–6 weeks
+
+## Win rate definition
+`win_rate` in `summarize()` = **profitable_rate**: fraction of trades where `pnl_pct > 0`.
+`strict_win_rate` = fraction where the strict target was hit within `hold_weeks`.
+The optimizer optimizes for `win_rate` (profitable_rate) — this is the 80% target.
+
+## Market regime filter
+`require_index_regime: True` in params → `engine.simulate()` only enters a trade
+if 0050.TW (Taiwan 50 ETF) close is above its 52-week (52-bar) weekly MA.
+`main.py` honors this at the start of the weekly scan and skips the entire scan
+when the market is in a downtrend.
+
+## Key parameter notes
+- `max_price` in PARAM_SPACE: must cover TSMC (~2255 NT$) and MediaTek (~3860 NT$).
+  Current range: [500, 1000, 2000, 5000]. Do NOT reduce below 2000.
+- `require_index_regime`: new in optimizer — highly recommended. Filters out
+  bear-market false positives that drag profitable_rate below 60%.

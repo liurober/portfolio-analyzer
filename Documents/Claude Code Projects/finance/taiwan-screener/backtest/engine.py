@@ -55,13 +55,38 @@ def _qualifies(df_so_far: pd.DataFrame, params: dict[str, Any]
 
 
 def simulate(ticker: str, df: pd.DataFrame, params: dict[str, Any],
-             start: int = 60) -> list[TradeResult]:
+             start: int = 60,
+             market_df: "pd.DataFrame | None" = None) -> list[TradeResult]:
     hold = int(params.get("hold_weeks", 5))
+    require_regime = params.get("require_index_regime", False) and market_df is not None
+
+    # ── Precompute market regime signal (O(n) once, not O(n²)) ────────────────
+    # regime_ok is a boolean Series: True when market close >= 52-week MA.
+    # We do a binary-search per bar (O(log n)) rather than re-scanning market_df.
+    regime_ok: "pd.Series | None" = None
+    if require_regime:
+        _mdf = market_df
+        if isinstance(_mdf.columns, pd.MultiIndex):
+            _mdf = _mdf.copy()
+            _mdf.columns = _mdf.columns.get_level_values(0)
+        mkt_close = _mdf["Close"]
+        mkt_ma52 = mkt_close.rolling(52, min_periods=52).mean()
+        regime_ok = mkt_close >= mkt_ma52   # NaN rows become False via fillna
+        regime_ok = regime_ok.fillna(False)
+
     results: list[TradeResult] = []
     last_exit_idx = -1
     for t in range(start, len(df) - hold):
         if t <= last_exit_idx:
             continue
+        # ── Market regime gate ─────────────────────────────────────────────────
+        # Only enter when 0050.TW is above its 52-week MA.
+        if regime_ok is not None:
+            bar_date = df.index[t]
+            # Find the latest market bar on or before bar_date (O(log n))
+            pos = regime_ok.index.searchsorted(bar_date, side="right") - 1
+            if pos < 0 or not bool(regime_ok.iloc[pos]):
+                continue
         slice_ = df.iloc[: t + 1]
         ok, scored, levels = _qualifies(slice_, params)
         if not ok:
@@ -105,6 +130,9 @@ def summarize(trades: list[TradeResult]) -> dict[str, Any]:
     wins = sum(1 for t in trades if t.outcome == "win")
     losses = sum(1 for t in trades if t.outcome == "loss")
     neut = sum(1 for t in trades if t.outcome == "neutral")
+    profitable = sum(1 for t in trades if t.pnl_pct > 0)
+    win_rets = [t.pnl_pct for t in trades if t.pnl_pct > 0]
+    avg_win_ret = sum(win_rets) / len(win_rets) if win_rets else 0.0
     rets = [t.pnl_pct for t in trades]
     avg_ret = sum(rets) / len(rets)
     import statistics as st
@@ -122,8 +150,13 @@ def summarize(trades: list[TradeResult]) -> dict[str, Any]:
     return {
         "total_trades": len(trades),
         "wins": wins, "losses": losses, "neutral": neut,
-        "win_rate": wins / len(trades),
-        "avg_return_pct": avg_ret,
+        "profitable": profitable,
+        # win_rate = profitable rate (PnL > 0); used by optimizer as primary filter
+        "win_rate": profitable / len(trades),
+        # strict_win_rate = target actually hit within hold_weeks (kept for reference)
+        "strict_win_rate": wins / len(trades),
+        "avg_return_pct": avg_ret,       # overall avg (all trades, incl. losses)
+        "avg_win_return_pct": avg_win_ret,  # avg return on profitable trades only
         "median_return_pct": st.median(rets),
         "sharpe": float(sharpe),
         "max_drawdown": float(max_dd),
