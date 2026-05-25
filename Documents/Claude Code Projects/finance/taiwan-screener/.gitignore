@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+*.pdf
+out/
+.env
+credentials.json
+token.json
+.venv/
