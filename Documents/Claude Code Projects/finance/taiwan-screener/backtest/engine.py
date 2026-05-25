@@ -43,6 +43,24 @@ def _qualifies(df_so_far: pd.DataFrame, params: dict[str, Any]
     avg_vol_k = float(df_so_far["Volume"].tail(10).mean()) / 1000.0
     if avg_vol_k < params.get("min_vol_k", 500):
         return False, {}, {}
+
+    # ── Optional: ATR volatility gate ────────────────────────────────────────
+    # Reject stocks where weekly ATR > max_atr_pct of price (default: no gate).
+    # High ATR relative to price means stop gets hit easily on noise.
+    max_atr_pct = params.get("max_atr_pct", None)
+    if max_atr_pct is not None and len(df_so_far) >= 14:
+        hi = df_so_far["High"].tail(14)
+        lo = df_so_far["Low"].tail(14)
+        cl = df_so_far["Close"].tail(15)
+        tr = (hi - lo).combine(
+            (hi - cl.shift(1).tail(14)).abs(),
+            max).combine(
+            (lo - cl.shift(1).tail(14)).abs(),
+            max)
+        atr_pct = float(tr.mean()) / last_close
+        if atr_pct > max_atr_pct:
+            return False, {}, {}
+
     scored = score_signals_tw(df_so_far, params)
     if not scored["gates_ok"] or scored["score"] < params.get("min_score", 6):
         return False, scored, {}
