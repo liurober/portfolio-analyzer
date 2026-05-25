@@ -1,0 +1,27 @@
+{
+  "as_of": "2026-05-25",
+  "exchange": "TWSE",
+  "count": 20,
+  "tickers": [
+    {"symbol": "2330.TW", "name_zh": "台積電",     "name_en": "TSMC",                       "sector": "半導體"},
+    {"symbol": "2317.TW", "name_zh": "鴻海",       "name_en": "Hon Hai Precision Industry", "sector": "電子"},
+    {"symbol": "2454.TW", "name_zh": "聯發科",     "name_en": "MediaTek",                   "sector": "半導體"},
+    {"symbol": "2308.TW", "name_zh": "台達電",     "name_en": "Delta Electronics",          "sector": "電子"},
+    {"symbol": "2382.TW", "name_zh": "廣達",       "name_en": "Quanta Computer",            "sector": "電腦"},
+    {"symbol": "2881.TW", "name_zh": "富邦金",     "name_en": "Fubon Financial",            "sector": "金融"},
+    {"symbol": "2882.TW", "name_zh": "國泰金",     "name_en": "Cathay Financial",           "sector": "金融"},
+    {"symbol": "2884.TW", "name_zh": "玉山金",     "name_en": "E.Sun Financial",            "sector": "金融"},
+    {"symbol": "2885.TW", "name_zh": "元大金",     "name_en": "Yuanta Financial",           "sector": "金融"},
+    {"symbol": "2886.TW", "name_zh": "兆豐金",     "name_en": "Mega Financial",             "sector": "金融"},
+    {"symbol": "2887.TW", "name_zh": "台新金",     "name_en": "Taishin Financial",          "sector": "金融"},
+    {"symbol": "2891.TW", "name_zh": "中信金",     "name_en": "CTBC Financial",             "sector": "金融"},
+    {"symbol": "3711.TW", "name_zh": "日月光投控", "name_en": "ASE Technology",             "sector": "半導體"},
+    {"symbol": "2303.TW", "name_zh": "聯電",       "name_en": "UMC",                        "sector": "半導體"},
+    {"symbol": "3034.TW", "name_zh": "聯詠",       "name_en": "Novatek",                    "sector": "半導體"},
+    {"symbol": "2412.TW", "name_zh": "中華電",     "name_en": "Chunghwa Telecom",           "sector": "電信"},
+    {"symbol": "1303.TW", "name_zh": "南亞",       "name_en": "Nan Ya Plastics",            "sector": "塑膠"},
+    {"symbol": "1301.TW", "name_zh": "台塑",       "name_en": "Formosa Plastics",           "sector": "塑膠"},
+    {"symbol": "2002.TW", "name_zh": "中鋼",       "name_en": "China Steel",                "sector": "鋼鐵"},
+    {"symbol": "2603.TW", "name_zh": "長榮",       "name_en": "Evergreen Marine",           "sector": "航運"}
+  ]
+}
