@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>{{ symbol }} {{ name_zh }} — 個股分析報告</title>
+<style>
+  @page { size: A4; margin: 18mm; }
+  body { font-family: 'Noto Sans TC', 'PingFang TC', Arial, sans-serif;
+         background:#0f1419; color:#e6edf3; margin:0; padding:0; }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 18px; }
+  .card { background:#161b22; border:1px solid #30363d; border-radius:10px;
+          padding:18px; margin-bottom:14px; }
+  .h1 { font-size:22px; font-weight:700; margin:0 0 6px 0; }
+  .muted { color:#8b949e; font-size:12px; }
+  .grid { width:100%; }
+  .grid td { padding:6px 8px; vertical-align:top; font-size:13px; }
+  .pillar { font-weight:700; color:#e6edf3; font-size:14px; }
+  .badge-buy   { background:#e53935; color:#fff; padding:2px 8px;
+                 border-radius:999px; font-weight:700; }
+  .badge-hold  { background:#ffd740; color:#000; padding:2px 8px;
+                 border-radius:999px; font-weight:700; }
+  .badge-avoid { background:#43a047; color:#fff; padding:2px 8px;
+                 border-radius:999px; font-weight:700; }
+  .price { color:#1e90ff; font-weight:700; }
+  .target { color:#e53935; font-weight:700; }
+  .stop { color:#ffd740; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <div class="h1">{{ symbol }} ｜ {{ name_zh }}</div>
+    <div class="muted">產業：{{ sector }} ｜ 報告日期：{{ date_zh }} ｜ 參數版本 {{ params_version }}</div>
+    <table class="grid" cellpadding="0" cellspacing="0">
+      <tr>
+        <td><span class="muted">最新收盤</span><br><span style="font-size:18px;font-weight:700;">NT${{ "%.2f"|format(last_close) }}</span></td>
+        <td><span class="muted">總分</span><br><span style="font-size:18px;font-weight:700;">{{ "%.1f"|format(total_score) }}/10</span></td>
+        <td><span class="muted">評等</span><br>
+          {% if rating == "強力買進" %}<span class="badge-buy">{{ rating }}</span>
+          {% elif rating == "買進" %}<span class="badge-buy">{{ rating }}</span>
+          {% elif rating == "觀望" %}<span class="badge-hold">{{ rating }}</span>
+          {% elif rating == "謹慎" %}<span class="badge-hold">{{ rating }}</span>
+          {% else %}<span class="badge-avoid">{{ rating }}</span>{% endif %}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="pillar">技術分析 — 權重 55% — 分數 {{ "%.1f"|format(tech_score) }}/10</div>
+    <img src="{{ chart_path }}" alt="週線圖" style="display:block;width:100%;max-width:780px;border-radius:8px;margin:10px 0;">
+    <table class="grid" cellpadding="0" cellspacing="0">
+      <tr>
+        <td><span class="muted">進場</span><br><span class="price">NT${{ "%.2f"|format(entry) }}</span></td>
+        <td><span class="muted">停損</span><br><span class="stop">NT${{ "%.2f"|format(stop) }}</span></td>
+        <td><span class="muted">目標</span><br><span class="target">NT${{ "%.2f"|format(target) }}</span></td>
+        <td><span class="muted">R:R</span><br>{{ "%.2f"|format(rr) }}</td>
+      </tr>
+    </table>
+    <div class="muted" style="margin-top:8px;">
+      8 指標分數：{{ indicator_score }}/8 ｜ 觸發：{{ indicators_fired | join("、") }}
+      {% if pattern %}<br>型態：{{ pattern }}（信心 {{ "%.0f"|format(pattern_confidence * 100) }}%）{% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="pillar">基本面分析 — 權重 30% — 分數 {{ "%.1f"|format(fund_score) }}/10</div>
+    <table class="grid" cellpadding="0" cellspacing="0">
+      <tr>
+        <td><span class="muted">本益比 (Fwd)</span><br>{{ fwd_pe }}</td>
+        <td><span class="muted">本益比 (TTM)</span><br>{{ ttm_pe }}</td>
+        <td><span class="muted">EV / EBITDA</span><br>{{ ev_ebitda }}</td>
+      </tr>
+      <tr>
+        <td><span class="muted">EPS 成長 (YoY)</span><br>{{ eps_growth }}</td>
+        <td><span class="muted">營收成長 (YoY)</span><br>{{ rev_growth }}</td>
+        <td><span class="muted">毛利率</span><br>{{ gross_margin }}</td>
+      </tr>
+      <tr>
+        <td><span class="muted">營業利益率</span><br>{{ op_margin }}</td>
+        <td><span class="muted">自由現金流</span><br>{{ fcf }}</td>
+        <td><span class="muted">負債權益比</span><br>{{ de_ratio }}</td>
+      </tr>
+      <tr>
+        <td colspan="3"><span class="muted">下次財報日</span><br>{{ next_earnings }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="pillar">機構相關性 — 權重 15% — 分數 {{ "%.1f"|format(inst_score) }}/10</div>
+    <table class="grid" cellpadding="0" cellspacing="0">
+      <tr><td><span class="muted">QQQ 2年週相關</span><br>{{ "%.2f"|format(corr_qqq) }}</td>
+          <td><span class="muted">SOXX</span><br>{{ "%.2f"|format(corr_soxx) }}</td>
+          <td><span class="muted">SPY</span><br>{{ "%.2f"|format(corr_spy) }}</td>
+          <td><span class="muted">AMAT</span><br>{{ "%.2f"|format(corr_amat) }}</td></tr>
+      <tr><td colspan="4"><span class="muted">相關性分類</span><br>{{ inst_label }}</td></tr>
+    </table>
+    <div class="muted" style="margin-top:8px;">主要機構持股：
+      {% if holders %}{% for h in holders %}{{ h.holder }}（{{ "%.2f"|format(h.pct) }}%）{% if not loop.last %}、{% endif %}{% endfor %}
+      {% else %}無資料{% endif %}
+    </div>
+    <div class="muted" style="margin-top:4px;">分析師共識：{{ analyst_recommendation }} ｜ 目標均價：{{ analyst_target_mean }} ｜ 分析師數：{{ analyst_count }}</div>
+  </div>
+
+  <div class="muted" style="text-align:center;font-size:11px;margin-top:16px;">
+    本報告僅供研究參考，不構成投資建議
+  </div>
+
+</div>
+</body>
+</html>
