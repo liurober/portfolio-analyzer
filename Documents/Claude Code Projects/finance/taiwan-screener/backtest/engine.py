@@ -44,6 +44,15 @@ def _qualifies(df_so_far: pd.DataFrame, params: dict[str, Any]
     if avg_vol_k < params.get("min_vol_k", 500):
         return False, {}, {}
 
+    # ── Optional: momentum pre-filter ────────────────────────────────────────
+    # Only enter if stock's 13-week return >= min_momentum_pct.
+    # Stocks already in momentum tend to continue for another 5-6 weeks.
+    min_momentum_pct = params.get("min_momentum_pct", None)
+    if min_momentum_pct is not None and len(df_so_far) >= 14:
+        ret_13w = (last_close / float(df_so_far["Close"].iloc[-14]) - 1) * 100
+        if ret_13w < min_momentum_pct:
+            return False, {}, {}
+
     # ── Optional: ATR volatility gate ────────────────────────────────────────
     # Reject stocks where weekly ATR > max_atr_pct of price (default: no gate).
     # High ATR relative to price means stop gets hit easily on noise.

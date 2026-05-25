@@ -53,6 +53,7 @@ PARAM_SPACE: dict[str, list] = {
     "require_ma_stack":     [True, False],
     "require_index_regime": [True, False],   # only enter when market > 52w MA
     "max_atr_pct":          [None, 0.06, 0.08, 0.10],  # ATR/price gate (None = off)
+    "min_momentum_pct":     [None, 5, 10, 15],          # 13-week return gate (None = off)
 }
 
 

@@ -13,7 +13,8 @@ def test_param_space_keys():
                 "min_price", "max_price", "min_vol_k", "bb_period",
                 "ma_fast", "ma_slow", "adx_threshold", "min_rr",
                 "require_macd", "require_ttm", "require_adx",
-                "require_ma_stack", "require_index_regime", "max_atr_pct"}
+                "require_ma_stack", "require_index_regime", "max_atr_pct",
+                "min_momentum_pct"}
     assert set(PARAM_SPACE.keys()) == expected
 
 
