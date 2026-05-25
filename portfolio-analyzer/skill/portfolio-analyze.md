@@ -284,6 +284,12 @@ The HTML template auto-populates hold from `holdings.positions` minus sell/buy t
 }
 ```
 
+**`sharpe_est`** — estimated post-restructure Sharpe ratio as a float. Base on the plan's beta, yield, and drawdown profile:
+- Aggressive: ~1.1–1.4 (high return, high vol)
+- Balanced: ~0.9–1.1
+- Conservative: ~0.7–0.9
+- Income: ~0.6–0.8 (lower vol but limited capital appreciation)
+
 **`fit_grade`** — letter grade for how well this plan fits the current macro regime (e.g. "A-")
 
 ---

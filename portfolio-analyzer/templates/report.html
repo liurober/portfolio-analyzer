@@ -426,10 +426,16 @@
       </div>
 
       <!-- Plan metrics summary -->
-      <div class="metric-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom:16px;">
+      <div class="metric-grid" style="grid-template-columns: repeat(6, 1fr); margin-bottom:16px;">
         <div class="metric-card">
           <div class="metric-label">Beta est</div>
           <div class="metric-value yellow">{{ am.beta_est }}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Sharpe est</div>
+          <div class="metric-value {% if plan.sharpe_est and plan.sharpe_est >= 1.0 %}green{% elif plan.sharpe_est and plan.sharpe_est >= 0.6 %}yellow{% else %}red{% endif %}">
+            {% if plan.sharpe_est is defined and plan.sharpe_est %}{{ "{:.2f}".format(plan.sharpe_est) }}{% else %}&#8212;{% endif %}
+          </div>
         </div>
         <div class="metric-card">
           <div class="metric-label">Yield est</div>
@@ -445,7 +451,7 @@
         </div>
         <div class="metric-card">
           <div class="metric-label">Macro Fit</div>
-          <div class="metric-value {% if plan_name == recommended_plan %}yellow{% else %}{% endif %}">
+          <div class="metric-value {% if plan_name == recommended_plan %}yellow{% endif %}">
             {% if plan.macro_fit_score %}{{ "{:.1f}".format(plan.macro_fit_score) }}/5{% else %}&#8212;{% endif %}
           </div>
         </div>
