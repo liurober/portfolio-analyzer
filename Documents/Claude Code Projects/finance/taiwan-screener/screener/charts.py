@@ -79,7 +79,7 @@ def build_chart(df: pd.DataFrame, symbol: str, name_zh: str,
         "axes.unicode_minus": False,
     })
 
-    fig = plt.figure(figsize=(11, 8))
+    fig = plt.figure(figsize=(7, 4))
     gs = fig.add_gridspec(3, 1, height_ratios=[3, 1, 1], hspace=0.05)
     ax_p = fig.add_subplot(gs[0])
     ax_r = fig.add_subplot(gs[1], sharex=ax_p)
@@ -130,6 +130,6 @@ def build_chart(df: pd.DataFrame, symbol: str, name_zh: str,
     plt.setp(ax_r.get_xticklabels(), visible=False)
 
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=110, bbox_inches="tight")
+    fig.savefig(buf, format="png", dpi=60, bbox_inches="tight")
     plt.close(fig)
     return buf.getvalue()
