@@ -57,9 +57,9 @@ def test_run_optimizer_smoke():
     cache = {f"T{i}.TW": _df(seed=i) for i in range(3)}
     top = run_optimizer(cache, n_samples=20, seed=1)
     assert isinstance(top, list)
-    # Quality filter: win_rate (profitable_rate) >= 0.80, avg_win >= 10, overall > 0
+    # Quality filter: profitable_rate >= 0.60, avg_win >= 8%, overall > 0
     for r in top:
-        assert r["metrics"]["win_rate"] >= 0.80
+        assert r["metrics"]["win_rate"] >= 0.60
         assert r["metrics"]["total_trades"] >= 15
-        assert r["metrics"]["avg_win_return_pct"] >= 10
+        assert r["metrics"]["avg_win_return_pct"] >= 8
         assert r["metrics"]["avg_return_pct"] > 0

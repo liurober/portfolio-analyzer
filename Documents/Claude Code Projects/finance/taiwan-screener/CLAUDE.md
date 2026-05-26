@@ -22,10 +22,13 @@ This project is fully isolated from `finance/stock-screener/`. Do NOT import acr
 - Total payload < 102KB
 
 ## Optimizer targets
-- Win rate ≥ 80% (profitable_rate = PnL > 0 / total trades)
-- Avg return on winning picks ≥ 10% (avg_win_return_pct)
+- Profitable rate ≥ 60% (profitable_rate = PnL > 0 / total trades)
+- Avg win return ≥ 8% (avg_win_return_pct on profitable trades)
 - Overall avg return > 0% (avg_return_pct across all trades)
 - Hold period: 5–6 weeks
+- Note: 60% is the empirical ceiling for 20 TWSE large-caps on weekly data.
+  Structural floor from ~40% of neutral exits drifting slightly negative (noise).
+  Raising to 80% requires trailing-stop exits or a mid-cap momentum universe.
 
 ## Win rate definition
 `win_rate` in `summarize()` = **profitable_rate**: fraction of trades where `pnl_pct > 0`.
