@@ -33,6 +33,7 @@ class TradeResult:
     pnl_pct: float
     hold_weeks_actual: int
     score: int
+    entry_features: "dict | None" = None   # populated when capture_features=True
 
 
 def _qualifies(df_so_far: pd.DataFrame, params: dict[str, Any]
@@ -83,7 +84,8 @@ def _qualifies(df_so_far: pd.DataFrame, params: dict[str, Any]
 
 def simulate(ticker: str, df: pd.DataFrame, params: dict[str, Any],
              start: int = 60,
-             market_df: "pd.DataFrame | None" = None) -> list[TradeResult]:
+             market_df: "pd.DataFrame | None" = None,
+             capture_features: bool = False) -> list[TradeResult]:
     hold = int(params.get("hold_weeks", 5))
     require_regime = params.get("require_index_regime", False) and market_df is not None
 
@@ -140,12 +142,19 @@ def simulate(ticker: str, df: pd.DataFrame, params: dict[str, Any],
             exit_price = float(window["Close"].iloc[-1])
             exit_date = str(window.index[-1].date())
         pnl_pct = (exit_price - entry) / entry * 100.0
+        feat = None
+        if capture_features:
+            from backtest.signal_scorer import extract_features
+            feat = extract_features(slice_, scored, levels)
+            feat["entry"] = entry
+            feat["stop"]  = stop
         results.append(TradeResult(
             ticker=ticker, entry_date=str(df.index[t].date()),
             entry=entry, stop=stop, target=target,
             exit_date=exit_date, exit_price=exit_price,
             outcome=outcome, pnl_pct=float(pnl_pct),
             hold_weeks_actual=hold_actual, score=int(scored["score"]),
+            entry_features=feat,
         ))
         last_exit_idx = t + hold_actual
     return results
