@@ -75,6 +75,31 @@
                         （SOXX {{ "%.2f"|format(pick.soxx_corr) }}）｜ 機構評分 {{ "%.1f"|format(pick.institution_score) }}/10
                       </td>
                     </tr>
+                    <tr>
+                      <td colspan="3" style="padding:10px 0 4px 0;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1f2e;border-radius:6px;border:1px solid #21262d;">
+                          <tr>
+                            <td width="33%" style="padding:8px 6px;text-align:center;border-right:1px solid #21262d;">
+                              <div style="font-size:11px;color:#8b949e;">歷史勝率</div>
+                              <div style="font-size:17px;font-weight:bold;color:#e53935;">{{ "%.0f"|format(pick.win_probability * 100) }}%</div>
+                              <div style="font-size:10px;color:#8b949e;">{{ pick.win_confidence }}（{{ pick.n_similar_setups }} 筆）</div>
+                            </td>
+                            <td width="33%" style="padding:8px 6px;text-align:center;border-right:1px solid #21262d;">
+                              <div style="font-size:11px;color:#8b949e;">最大停損</div>
+                              <div style="font-size:17px;font-weight:bold;color:#ffd740;">{{ "%.1f"|format(pick.max_loss_pct) }}%</div>
+                            </td>
+                            <td width="34%" style="padding:8px 6px;text-align:center;">
+                              <div style="font-size:11px;color:#8b949e;">預期報酬</div>
+                              {% if pick.expected_value_pct and pick.expected_value_pct > 0 %}
+                              <div style="font-size:17px;font-weight:bold;color:#e53935;">+{{ "%.1f"|format(pick.expected_value_pct) }}%</div>
+                              {% else %}
+                              <div style="font-size:17px;font-weight:bold;color:#43a047;">{{ "%.1f"|format(pick.expected_value_pct or 0) }}%</div>
+                              {% endif %}
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
                   </table>
                 </td>
               </tr>

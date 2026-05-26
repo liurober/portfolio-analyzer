@@ -26,6 +26,7 @@ from screener.support_resistance import suggest_trade_levels
 from screener.charts import build_chart
 from screener.institution import report_for
 from screener.universe_tw import load_universe
+from backtest.signal_scorer import SignalScorer, extract_features, MODEL_PATH
 
 OUT_DIR = HERE / "out"
 OPTIMAL = HERE / "backtest" / "optimal_params.json"
@@ -144,6 +145,30 @@ def analyze(symbol: str) -> dict:
     chart_file = OUT_DIR / f"{symbol.replace('.', '_')}_chart.png"
     chart_file.write_bytes(png)
 
+    # ── Per-signal win probability ─────────────────────────────────────────────
+    _entry = levels.get("entry") or last_close
+    _stop  = levels.get("stop")  or last_close * 0.90
+    _fallback_loss = round((_stop - _entry) / _entry * 100, 2)
+    win_probability   = 0.5
+    win_confidence    = "LOW"
+    n_similar_setups  = 0
+    max_loss_pct      = _fallback_loss
+    expected_value_pct: float | None = None
+    if MODEL_PATH.exists():
+        try:
+            scorer = SignalScorer.from_file(MODEL_PATH)
+            _feat = extract_features(df, scored, levels)
+            _feat["entry"] = _entry
+            _feat["stop"]  = _stop
+            _pred = scorer.predict(_feat)
+            win_probability   = _pred.get("win_probability", 0.5)
+            win_confidence    = _pred.get("confidence", "LOW")
+            n_similar_setups  = _pred.get("n_similar", 0)
+            max_loss_pct      = _pred.get("max_loss_pct") or _fallback_loss
+            expected_value_pct = _pred.get("expected_value_pct")
+        except Exception as e:
+            print(f"[analyze_tw] ⚠️  signal model predict failed: {e}")
+
     env = Environment(loader=FileSystemLoader(str(HERE / "screener")),
                       autoescape=select_autoescape(["html"]))
     tpl = env.get_template("analyze_template_tw.html")
@@ -180,6 +205,12 @@ def analyze(symbol: str) -> dict:
         "analyst_recommendation": inst.analyst.get("recommendation", "n/a"),
         "analyst_target_mean": _fmt(inst.analyst.get("target_mean")),
         "analyst_count": inst.analyst.get("num_analysts") or "n/a",
+        # ── ML probability metrics ────────────────────────────────────────────
+        "win_probability":    win_probability,
+        "win_confidence":     win_confidence,
+        "n_similar_setups":   n_similar_setups,
+        "max_loss_pct":       max_loss_pct,
+        "expected_value_pct": expected_value_pct,
     }
     html = tpl.render(**ctx)
     out_html = OUT_DIR / f"{symbol.replace('.', '_')}_analyze.html"

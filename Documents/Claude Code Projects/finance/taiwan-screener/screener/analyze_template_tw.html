@@ -65,6 +65,35 @@
   </div>
 
   <div class="card">
+    <div class="pillar">AI 勝率預測</div>
+    <table class="grid" cellpadding="0" cellspacing="0" style="margin-top:10px;">
+      <tr>
+        <td style="text-align:center;padding:10px 8px;border-right:1px solid #30363d;">
+          <span class="muted">歷史勝率</span><br>
+          <span style="font-size:24px;font-weight:700;color:#e53935;">{{ "%.0f"|format(win_probability * 100) }}%</span><br>
+          <span class="muted">{{ win_confidence }}（{{ n_similar_setups }} 筆相似設置）</span>
+        </td>
+        <td style="text-align:center;padding:10px 8px;border-right:1px solid #30363d;">
+          <span class="muted">最大停損風險</span><br>
+          <span style="font-size:24px;font-weight:700;color:#ffd740;">{{ "%.1f"|format(max_loss_pct) }}%</span><br>
+          <span class="muted">（進場→停損距離）</span>
+        </td>
+        <td style="text-align:center;padding:10px 8px;">
+          <span class="muted">預期報酬（EV）</span><br>
+          {% if expected_value_pct and expected_value_pct > 0 %}
+          <span style="font-size:24px;font-weight:700;color:#e53935;">+{{ "%.1f"|format(expected_value_pct) }}%</span>
+          {% elif expected_value_pct %}
+          <span style="font-size:24px;font-weight:700;color:#43a047;">{{ "%.1f"|format(expected_value_pct) }}%</span>
+          {% else %}
+          <span style="font-size:24px;font-weight:700;color:#8b949e;">n/a</span>
+          {% endif %}
+          <br><span class="muted">P(勝)×平均獲利 − P(敗)×停損</span>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
     <div class="pillar">基本面分析 — 權重 30% — 分數 {{ "%.1f"|format(fund_score) }}/10</div>
     <table class="grid" cellpadding="0" cellspacing="0">
       <tr>

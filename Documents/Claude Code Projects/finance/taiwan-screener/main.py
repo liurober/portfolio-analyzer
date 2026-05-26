@@ -25,6 +25,9 @@ from screener.screener_core import evaluate_ticker, select_top, record_picks
 from screener.charts import build_chart
 from screener.institution import report_for
 from screener.mailer import render_weekly_email, send_email
+from screener.indicators_tw import score_signals_tw
+from screener.support_resistance import suggest_trade_levels
+from backtest.signal_scorer import SignalScorer, extract_features, MODEL_PATH
 import yfinance as yf
 
 OPTIMAL_PARAMS = HERE / "backtest" / "optimal_params.json"
@@ -95,6 +98,18 @@ def _market_in_uptrend() -> bool:
 def main() -> int:
     params, params_version = load_params()
 
+    # ── Signal probability model ──────────────────────────────────────────────
+    scorer: SignalScorer | None = None
+    if MODEL_PATH.exists():
+        try:
+            scorer = SignalScorer.from_file(MODEL_PATH)
+            print(f"[main] signal model loaded: n={scorer.n_samples}, "
+                  f"base_rate={scorer.base_rate:.1%}")
+        except Exception as e:
+            print(f"[main] ⚠️  signal model not loaded: {e}")
+    else:
+        print("[main] ⚠️  signal_model.json not found — run train_signal_model.py")
+
     # ── Market regime gate ────────────────────────────────────────────────────
     if params.get("require_index_regime", False):
         if not _market_in_uptrend():
@@ -121,14 +136,39 @@ def main() -> int:
 
     picks_for_email: list[dict] = []
     for p in top:
+        df = None
+        png = b""
         try:
             df = yf.download(p.symbol, period="2y", interval="1wk",
                              auto_adjust=True, progress=False).dropna()
+            if isinstance(df.columns, __import__("pandas").MultiIndex):
+                df.columns = df.columns.get_level_values(0)
             png = build_chart(df, p.symbol, p.name_zh,
                               p.entry, p.stop, p.target)
         except Exception:
             png = b""
         inst = report_for(p.symbol)
+
+        # ── Per-signal win probability prediction ─────────────────────────────
+        _fallback_loss = round((p.stop - p.entry) / p.entry * 100, 2) if p.entry else -7.0
+        win_pred: dict = {
+            "win_probability": scorer.base_rate if scorer else 0.5,
+            "confidence": "LOW", "n_similar": 0,
+            "max_loss_pct": _fallback_loss,
+            "expected_value_pct": 0.0,
+        }
+        if scorer is not None and df is not None and not df.empty:
+            try:
+                _scored = score_signals_tw(df, params)
+                _levels = {"entry": p.entry, "stop": p.stop,
+                           "target": p.target, "rr": p.rr}
+                _feat = extract_features(df, _scored, _levels)
+                _feat["entry"] = p.entry
+                _feat["stop"]  = p.stop
+                win_pred = scorer.predict(_feat)
+            except Exception as e:
+                print(f"[main] ⚠️  predict failed for {p.symbol}: {e}")
+
         picks_for_email.append({
             "symbol": p.symbol, "name_zh": p.name_zh, "sector": p.sector,
             "score": p.score, "indicators_fired": p.indicators_fired,
@@ -139,6 +179,12 @@ def main() -> int:
             "soxx_corr": inst.correlations.get("SOXX") or 0,
             "institution_score": inst.score,
             "chart_png": png,
+            # ── ML probability metrics ─────────────────────────────────────
+            "win_probability":   win_pred.get("win_probability", 0.5),
+            "win_confidence":    win_pred.get("confidence", "LOW"),
+            "n_similar_setups":  win_pred.get("n_similar", 0),
+            "max_loss_pct":      win_pred.get("max_loss_pct") or _fallback_loss,
+            "expected_value_pct": win_pred.get("expected_value_pct") or 0.0,
         })
 
     today = datetime.utcnow()
