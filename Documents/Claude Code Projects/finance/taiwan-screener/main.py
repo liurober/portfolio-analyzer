@@ -30,6 +30,39 @@ from screener.support_resistance import suggest_trade_levels
 from backtest.signal_scorer import SignalScorer, extract_features, MODEL_PATH
 import yfinance as yf
 
+# Signal key → Traditional Chinese label
+_SIG_ZH = {
+    "rsi":        "RSI 超賣回升",
+    "bb":         "布林通道突破",
+    "macd":       "MACD 金叉",
+    "chandelier": "天齊線突破",
+    "ttm":        "TTM Squeeze 放量",
+    "ma_stack":   "MA 多頭排列",
+    "adx":        "ADX 趨勢確認",
+    "volume":     "成交量放大",
+}
+
+
+def _make_reasoning(p: "any", win_pred: dict) -> str:
+    """Generate a one-paragraph 'Why This Trade' summary in Traditional Chinese."""
+    fired_zh = [_SIG_ZH.get(k, k) for k in (p.indicators_fired or [])]
+    parts = [f"綜合評分 {p.score}/8，觸發指標：{'、'.join(fired_zh) if fired_zh else '無'}。"]
+    if p.pattern and p.pattern_confidence:
+        parts.append(f"K線型態：{p.pattern}（信心 {p.pattern_confidence*100:.0f}%）。")
+    parts.append(
+        f"R:R = {p.rr:.1f}x，停損位 NT${p.stop:.0f}，"
+        f"目標 NT${p.target:.0f}，預計持倉 {p.hold_weeks} 週。"
+    )
+    wp  = win_pred.get("win_probability", 0.5)
+    n   = win_pred.get("n_similar", 0)
+    ev  = win_pred.get("expected_value_pct") or 0.0
+    conf = win_pred.get("confidence", "LOW")
+    parts.append(
+        f"歷史相似設置（{n} 筆，信心 {conf}）勝率 {wp:.0%}，"
+        f"預期報酬 EV = {ev:.1f}%。"
+    )
+    return " ".join(parts)
+
 OPTIMAL_PARAMS = HERE / "backtest" / "optimal_params.json"
 PICKS_LOG = HERE / "backtest" / "picks_log.json"
 
@@ -169,6 +202,8 @@ def main() -> int:
             except Exception as e:
                 print(f"[main] ⚠️  predict failed for {p.symbol}: {e}")
 
+        _fired_set = set(p.indicators_fired or [])
+        _tv_ticker = p.symbol.replace(".TW", "")
         picks_for_email.append({
             "symbol": p.symbol, "name_zh": p.name_zh, "sector": p.sector,
             "score": p.score, "indicators_fired": p.indicators_fired,
@@ -179,12 +214,19 @@ def main() -> int:
             "soxx_corr": inst.correlations.get("SOXX") or 0,
             "institution_score": inst.score,
             "chart_png": png,
+            # ── Signal booleans for pills ──────────────────────────────────
+            "signals": {k: (k in _fired_set) for k in
+                        ("rsi", "bb", "macd", "chandelier",
+                         "ttm", "ma_stack", "adx", "volume")},
             # ── ML probability metrics ─────────────────────────────────────
-            "win_probability":   win_pred.get("win_probability", 0.5),
-            "win_confidence":    win_pred.get("confidence", "LOW"),
-            "n_similar_setups":  win_pred.get("n_similar", 0),
-            "max_loss_pct":      win_pred.get("max_loss_pct") or _fallback_loss,
+            "win_probability":    win_pred.get("win_probability", 0.5),
+            "win_confidence":     win_pred.get("confidence", "LOW"),
+            "n_similar_setups":   win_pred.get("n_similar", 0),
+            "max_loss_pct":       win_pred.get("max_loss_pct") or _fallback_loss,
             "expected_value_pct": win_pred.get("expected_value_pct") or 0.0,
+            # ── Reasoning + TradingView link ───────────────────────────────
+            "reasoning": _make_reasoning(p, win_pred),
+            "tv_link": f"https://www.tradingview.com/chart/?symbol=TWSE:{_tv_ticker}",
         })
 
     today = datetime.utcnow()

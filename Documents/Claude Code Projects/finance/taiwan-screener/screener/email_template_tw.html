@@ -1,122 +1,167 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>台股週報</title>
 </head>
-<body style="margin:0;padding:0;background:#0f1419;color:#e6edf3;font-family:'Noto Sans TC','PingFang TC',Arial,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0f1419;">
+<body style="font-family:-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',Arial,sans-serif;background:#0d0d0d;color:#e0e0e0;margin:0;padding:0;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0d0d;">
+<tr><td align="center" style="padding:32px 16px;">
+<table width="640" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;width:100%;">
+
+  <!-- HEADER -->
+  <tr><td style="border-bottom:2px solid #e53935;padding-bottom:16px;">
+    <div style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 4px 0;">&#9650; 台股週報 — 交易機會</div>
+    <div style="font-size:13px;color:#888;">{{ date_zh }} &nbsp;&middot;&nbsp; 掃描 {{ universe_count }} 檔 &nbsp;&middot;&nbsp; 篩選出 {{ pick_count }} 個高分設置</div>
+  </td></tr>
+  <tr><td style="height:24px;"></td></tr>
+
+  {% for pick in picks %}
+  {% set _fired = pick.signals if pick.signals is defined else {} %}
+  {% set signals_list = [
+    ("RSI 動能",    _fired.get("rsi",       false)),
+    ("布林通道",    _fired.get("bb",        false)),
+    ("MACD",        _fired.get("macd",      false)),
+    ("天齊線停損",  _fired.get("chandelier",false)),
+    ("TTM Squeeze", _fired.get("ttm",       false)),
+    ("MA 多頭排列", _fired.get("ma_stack",  false)),
+    ("ADX 趨勢",    _fired.get("adx",       false)),
+    ("成交量確認",  _fired.get("volume",    false)),
+  ] %}
+  {% set wp     = pick.win_probability if pick.win_probability is defined else 0.5 %}
+  {% set wp_pct = (wp * 100) | int %}
+  {% set wp_col = '#e53935' if wp >= 0.55 else ('#ffd740' if wp >= 0.45 else '#8b949e') %}
+
+  <!-- TRADE CARD -->
+  <tr><td style="padding-bottom:24px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:8px;border:1px solid #2a2a2a;background:#1a1a1a;">
   <tr>
-    <td align="center" style="padding:24px 12px;">
-      <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="background:#161b22;border-radius:12px;border:1px solid #21262d;">
-        <tr>
-          <td style="padding:24px;">
-            <h1 style="margin:0 0 4px 0;font-size:22px;color:#e6edf3;">台股週報 — 交易機會</h1>
-            <div style="font-size:13px;color:#8b949e;">{{ date_zh }} ｜ 本週掃描 {{ universe_count }} 檔，篩選出 {{ pick_count }} 個高分設置</div>
-          </td>
-        </tr>
+    <!-- Red left border = LONG/多方 -->
+    <td width="4" style="background:#e53935;border-radius:8px 0 0 8px;">&nbsp;</td>
+    <td style="padding:24px;">
 
-        {% for pick in picks %}
-        <tr>
-          <td style="padding:0 24px 16px 24px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d1117;border:1px solid #30363d;border-radius:10px;">
-              <tr>
-                <td style="padding:18px 18px 8px 18px;">
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                    <tr>
-                      <td style="font-size:18px;font-weight:bold;color:#e6edf3;">
-                        {{ pick.symbol }} ｜ {{ pick.name_zh }}
-                        <span style="font-size:12px;color:#8b949e;font-weight:normal;">（{{ pick.sector }}）</span>
-                      </td>
-                      <td align="right" style="font-size:14px;color:#e53935;font-weight:bold;">
-                        分數 {{ pick.score }}/8
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-              <tr>
-                <td align="center" style="padding:8px 18px;">
-                  <img src="cid:{{ pick.chart_cid }}" alt="{{ pick.symbol }} 週線圖" width="560" style="display:block;width:100%;max-width:560px;border-radius:8px;">
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:8px 18px;">
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                    <tr>
-                      <td width="33%" style="padding:6px 0;font-size:13px;">
-                        <div style="color:#8b949e;">進場</div>
-                        <div style="color:#1e90ff;font-weight:bold;font-size:15px;">NT${{ "%.2f"|format(pick.entry) }}</div>
-                      </td>
-                      <td width="33%" style="padding:6px 0;font-size:13px;">
-                        <div style="color:#8b949e;">停損</div>
-                        <div style="color:#ffd740;font-weight:bold;font-size:15px;">NT${{ "%.2f"|format(pick.stop) }}</div>
-                      </td>
-                      <td width="33%" style="padding:6px 0;font-size:13px;">
-                        <div style="color:#8b949e;">目標</div>
-                        <div style="color:#e53935;font-weight:bold;font-size:15px;">NT${{ "%.2f"|format(pick.target) }}</div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colspan="3" style="padding:8px 0 0 0;font-size:12px;color:#8b949e;">
-                        報酬風險比 R:R = <span style="color:#e6edf3;font-weight:bold;">{{ "%.2f"|format(pick.rr) }}</span>
-                        ｜ 持有 {{ pick.hold_weeks }} 週
-                        {% if pick.pattern %}｜ 型態：<span style="color:#e6edf3;">{{ pick.pattern }}</span>（信心 {{ "%.0f"|format(pick.pattern_confidence * 100) }}%）{% endif %}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colspan="3" style="padding:6px 0 0 0;font-size:12px;color:#8b949e;">
-                        觸發指標：<span style="color:#e6edf3;">{{ pick.indicators_fired | join("、") }}</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colspan="3" style="padding:6px 0 0 0;font-size:12px;color:#8b949e;">
-                        機構相關性：<span style="color:#e6edf3;">{{ pick.institution_label }}</span>
-                        （SOXX {{ "%.2f"|format(pick.soxx_corr) }}）｜ 機構評分 {{ "%.1f"|format(pick.institution_score) }}/10
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colspan="3" style="padding:10px 0 4px 0;">
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1f2e;border-radius:6px;border:1px solid #21262d;">
-                          <tr>
-                            <td width="33%" style="padding:8px 6px;text-align:center;border-right:1px solid #21262d;">
-                              <div style="font-size:11px;color:#8b949e;">歷史勝率</div>
-                              <div style="font-size:17px;font-weight:bold;color:#e53935;">{{ "%.0f"|format(pick.win_probability * 100) }}%</div>
-                              <div style="font-size:10px;color:#8b949e;">{{ pick.win_confidence }}（{{ pick.n_similar_setups }} 筆）</div>
-                            </td>
-                            <td width="33%" style="padding:8px 6px;text-align:center;border-right:1px solid #21262d;">
-                              <div style="font-size:11px;color:#8b949e;">最大停損</div>
-                              <div style="font-size:17px;font-weight:bold;color:#ffd740;">{{ "%.1f"|format(pick.max_loss_pct) }}%</div>
-                            </td>
-                            <td width="34%" style="padding:8px 6px;text-align:center;">
-                              <div style="font-size:11px;color:#8b949e;">預期報酬</div>
-                              {% if pick.expected_value_pct and pick.expected_value_pct > 0 %}
-                              <div style="font-size:17px;font-weight:bold;color:#e53935;">+{{ "%.1f"|format(pick.expected_value_pct) }}%</div>
-                              {% else %}
-                              <div style="font-size:17px;font-weight:bold;color:#43a047;">{{ "%.1f"|format(pick.expected_value_pct or 0) }}%</div>
-                              {% endif %}
-                            </td>
-                          </tr>
-                        </table>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
+      <!-- CARD HEADER: ticker left, score right -->
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td valign="top">
+          <div style="font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">
+            {{ pick.symbol }} &nbsp;<span style="font-size:15px;font-weight:400;color:#8b949e;">{{ pick.name_zh }}</span>
+          </div>
+          <div style="margin-top:8px;">
+            <span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;letter-spacing:1px;background:#e5393520;color:#e53935;border:1px solid #e53935;">多方 LONG</span>
+            <span style="display:inline-block;font-size:11px;color:#aaa;background:#2a2a2a;padding:3px 8px;border-radius:4px;margin-left:6px;">{{ pick.sector }}</span>
+            {% if pick.pattern %}<span style="display:inline-block;font-size:11px;color:#ffd740;background:#ffd74015;padding:3px 8px;border-radius:4px;margin-left:6px;border:1px solid #ffd74030;">{{ pick.pattern }}（{{ "%.0f"|format((pick.pattern_confidence or 0)*100) }}%）</span>{% endif %}
+          </div>
+        </td>
+        <td valign="top" align="right" width="120">
+          <div style="font-size:10px;color:#555;letter-spacing:1px;">匯流評分</div>
+          <div style="font-size:24px;font-weight:800;color:#e53935;line-height:1;">{{ pick.score }}<span style="font-size:13px;color:#444;font-weight:400;">/8</span></div>
+          <div style="margin-top:6px;">
+            {% for i in range(8) %}<span style="display:inline-block;width:18px;height:4px;border-radius:2px;background:{{ '#e53935' if i < pick.score else '#252525' }};margin-right:2px;"></span>{% endfor %}
+          </div>
+        </td>
+      </tr>
+      </table>
+
+      <!-- ENTRY / STOP / TARGET -->
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111;border-radius:6px;margin:14px 0;">
+      <tr>
+        <td width="33%" style="padding:14px;" valign="top">
+          <div style="font-size:10px;letter-spacing:1px;color:#555;margin-bottom:5px;">進場區間</div>
+          <div style="font-size:21px;font-weight:700;color:#1e90ff;">NT${{ "%.2f"|format(pick.entry) }}</div>
+          <div style="font-size:11px;color:#444;margin-top:2px;">當週收盤</div>
+        </td>
+        <td width="33%" style="padding:14px;border-left:1px solid #222;" valign="top">
+          <div style="font-size:10px;letter-spacing:1px;color:#555;margin-bottom:5px;">停損位</div>
+          <div style="font-size:21px;font-weight:700;color:#ffd740;">NT${{ "%.2f"|format(pick.stop) }}</div>
+          <div style="font-size:11px;color:#444;margin-top:2px;">天齊線出場</div>
+        </td>
+        <td width="33%" style="padding:14px;border-left:1px solid #222;" valign="top">
+          <div style="font-size:10px;letter-spacing:1px;color:#555;margin-bottom:5px;">目標價</div>
+          <div style="font-size:21px;font-weight:700;color:#e53935;">NT${{ "%.2f"|format(pick.target) }}</div>
+          <div style="font-size:11px;color:#444;margin-top:2px;">R:R {{ "%.1f"|format(pick.rr) }}x &nbsp;｜&nbsp; 持倉 {{ pick.hold_weeks }} 週</div>
+        </td>
+      </tr>
+      </table>
+
+      <!-- SIGNAL PILLS -->
+      <div style="margin:12px 0;">
+        {% for name, on in signals_list %}
+        <span style="display:inline-block;font-size:11px;padding:3px 9px;border-radius:3px;margin:2px;background:{{ '#e5393518' if on else '#1a1a1a' }};color:{{ '#e53935' if on else '#3a3a3a' }};border:1px solid {{ '#e5393540' if on else '#252525' }};">{{ name }}</span>
         {% endfor %}
+      </div>
 
+      <!-- WIN PROBABILITY / MAX LOSS / R:R STRIP -->
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 14px;background:#111;border-radius:4px;">
         <tr>
-          <td style="padding:18px 24px 24px 24px;font-size:11px;color:#6e7681;border-top:1px solid #21262d;">
-            參數版本 {{ params_version }} ｜ 由 Monte Carlo 優化器產生
-            ｜ 本郵件僅供研究參考，不構成投資建議
+          <td width="33%" style="padding:10px 14px;text-align:center;border-right:1px solid #1e1e1e;">
+            <div style="font-size:20px;font-weight:bold;color:{{ wp_col }};">{{ wp_pct }}%</div>
+            <div style="font-size:10px;color:#555;margin-top:2px;">歷史勝率</div>
+            <div style="font-size:10px;color:#444;margin-top:1px;">{{ pick.win_confidence if pick.win_confidence is defined else 'LOW' }}（{{ pick.n_similar_setups if pick.n_similar_setups is defined else 0 }} 筆）</div>
+          </td>
+          <td width="33%" style="padding:10px 14px;text-align:center;border-right:1px solid #1e1e1e;">
+            <div style="font-size:20px;font-weight:bold;color:#ffd740;">{{ "%.1f"|format(pick.max_loss_pct if pick.max_loss_pct is defined else 0) }}%</div>
+            <div style="font-size:10px;color:#555;margin-top:2px;">最大停損</div>
+            <div style="font-size:10px;color:#444;margin-top:1px;">NT${{ "%.2f"|format(pick.stop) }} 停損位</div>
+          </td>
+          <td width="33%" style="padding:10px 14px;text-align:center;">
+            <div style="font-size:20px;font-weight:bold;color:#1e90ff;">{{ "%.1f"|format(pick.rr) }}x</div>
+            <div style="font-size:10px;color:#555;margin-top:2px;">報酬風險比</div>
+            <div style="font-size:10px;color:#444;margin-top:1px;">
+              {% if pick.expected_value_pct is defined and pick.expected_value_pct %}
+              EV {{ "%.1f"|format(pick.expected_value_pct) }}%
+              {% else %}目標 NT${{ "%.2f"|format(pick.target) }}{% endif %}
+            </div>
           </td>
         </tr>
       </table>
+
+      <!-- CHART -->
+      <div style="font-size:10px;letter-spacing:1.5px;color:#444;margin:18px 0 8px;">圖表分析 &mdash; 週線</div>
+      <div style="border-radius:6px;overflow:hidden;margin-bottom:6px;">
+        <img src="cid:{{ pick.chart_cid }}" alt="{{ pick.symbol }} 週線圖" width="556" style="display:block;width:100%;max-width:556px;" />
+      </div>
+      <div style="font-size:10px;color:#333;margin-bottom:14px;">K線 &middot; 布林通道 &middot; 天齊線 &middot; RSI(14) &middot; MACD &middot; MA {{ pick.hold_weeks * 4 }}/120</div>
+
+      <!-- INSTITUTION CORRELATION -->
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0;">
+        <tr>
+          <td style="font-size:12px;color:#555;padding:8px 12px;background:#111;border-radius:4px;">
+            機構相關性：<span style="color:#ccc;font-weight:600;">{{ pick.institution_label }}</span>
+            &nbsp;&nbsp;SOXX {{ "%.2f"|format(pick.soxx_corr) }}
+            &nbsp;&middot;&nbsp; 機構評分 <span style="color:#ffd740;font-weight:600;">{{ "%.1f"|format(pick.institution_score) }}/10</span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- WHY THIS TRADE -->
+      {% if pick.reasoning is defined and pick.reasoning %}
+      <div style="font-size:10px;letter-spacing:1.5px;color:#444;margin:16px 0 8px;">為何選擇此交易</div>
+      <div style="font-size:13px;color:#ccc;line-height:1.7;padding:12px 14px;background:#111;border-radius:5px;border-left:2px solid #e5393580;">{{ pick.reasoning }}</div>
+      {% endif %}
+
+      <!-- TRADINGVIEW LINK -->
+      <div style="margin-top:16px;">
+        <a href="{{ pick.tv_link }}" target="_blank" style="display:inline-block;font-size:12px;color:#e53935;text-decoration:none;border:1px solid #e5393540;padding:7px 16px;border-radius:4px;">在 TradingView 查看 &rarr;</a>
+      </div>
+
     </td>
   </tr>
+  </table>
+  </td></tr>
+  {% endfor %}
+
+  <!-- FOOTER -->
+  <tr><td style="padding-top:16px;border-top:1px solid #1a1a1a;font-size:11px;color:#333;text-align:center;line-height:2;">
+    本報告僅供研究參考，不構成投資建議 &middot; 交易風險自負<br>
+    RSI &middot; 布林通道 &middot; MACD &middot; 天齊線 &middot; TTM Squeeze &middot; MA多頭排列 &middot; ADX &middot; 成交量<br>
+    台股全市場 {{ universe_count }} 檔 &middot; 週線時間框架 &middot; 最低匯流分數 6/8 &middot; 參數版本 {{ params_version }}
+  </td></tr>
+
+</table>
+</td></tr>
 </table>
 </body>
 </html>
