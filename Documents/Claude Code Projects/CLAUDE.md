@@ -55,6 +55,7 @@ Each session will be focused on exactly **one** of these streams. Do not mix the
 - Over-explain. One clear sentence beats a paragraph.
 - Skip steps in a workflow, test, or deployment.
 - Mix streams in a single session.
+- Send ANY status update unless Rob explicitly asks. Never echo monitor notifications, background task events, or progress pings. Speak only when there is a result, an error, or Rob directly asks for an update.
 
 ---
 
@@ -68,11 +69,41 @@ Each session will be focused on exactly **one** of these streams. Do not mix the
 
 ---
 
+## Pre-Push Quality Checklist (MANDATORY)
+
+**Before pushing ANY code change, Claude must verify all of the following. Do not push until every box is checked.**
+
+### HTML Emails (stock screener, any email output)
+- [ ] Render the template locally with real data and open in Chrome via `http.server`
+- [ ] Screenshot confirms: dark background, colored prices, signal pills, chart visible
+- [ ] No broken images — charts must render, not show alt text
+- [ ] Email size < 102KB (Gmail clips at 102KB — run `len(html.encode())//1024`)
+- [ ] No `data:` URI images — use CID inline attachments (Gmail blocks data URIs)
+- [ ] No `display:grid` or `display:flex` — use `<table>` layout (Gmail strips these)
+- [ ] No `<style>` block — all styles must be inline on each element
+- [ ] All prices display as `$x.xx` (2 decimal places, no raw floats)
+
+### All Code Pushes
+- [ ] Run the relevant smoke test or quick `python -c` import/render test locally
+- [ ] Confirm no unintended files staged (no `.env`, `credentials.json`, `token.json`, `*.pdf`, `*.html` analysis outputs)
+- [ ] If GitHub Actions workflow is involved — trigger a manual run and watch it complete before declaring done
+- [ ] If the change affects email delivery — trigger a real run and visually confirm the email in the inbox
+
+### Definition of Done
+A push is only "done" when:
+1. GitHub Actions run completes green ✓
+2. The actual output (email, file, report) has been visually verified
+3. Rob has confirmed it looks correct
+
+**Never declare a task done based on code passing a local test alone. Always verify the real output.**
+
+---
+
 ## Skills, Plugins & Commands Reference (Auto-Maintained)
 
 A full reference of all Claude Code skills, plugins, and commands is maintained at:
 
-**Obsidian:** `Tools/Claude Code - Skills, Plugins & Commands Reference.md`
+**Obsidian:** `Claude Memory/Claude Code - Skills, Plugins & Commands Reference.md`
 
 **Auto-update rule:** Whenever a new skill, plugin, slash command, or MCP tool is introduced, installed, or removed during any session, Claude must update that Obsidian note immediately — before the session ends. Do not ask Rob to do this manually. The note must always reflect the current state.
 
@@ -83,7 +114,8 @@ A full reference of all Claude Code skills, plugins, and commands is maintained 
 Use these automatically for the right task — do not ask Rob to invoke them manually.
 
 **Obsidian** (`obsidian-cli`, `obsidian-markdown`, `obsidian-bases` skills)
-- Vault: iCloud Drive → `Rob's Vault` (not the local vault)
+- Vault path: `/Users/robertliu/Library/Mobile Documents/iCloud~md~obsidian/Documents/Rob's Valut/Rob's Personal Vault/`
+- **NEVER save anything outside of `Rob's Personal Vault`.** The outer folder (`Rob's Valut/`) is not the vault — it is just a container. All notes, research, and outputs must go inside `Rob's Personal Vault/`.
 - No fixed folder structure — create and categorize folders based on content type and stream
 - All research, decisions, and session outputs that Rob signs off on go here
 
@@ -115,6 +147,13 @@ Use these automatically for the right task — do not ask Rob to invoke them man
 - Use for all trading, investment, real estate, and financial analysis work
 - Financial services plugin includes FSI vertical plugins and managed agent cookbooks
 - **`/analyze <TICKER>`** → ALWAYS invoke the `equity-research:analyze` skill immediately. Never web search, never ask clarifying questions, never summarize manually. The skill runs `analyze.py`, scores all pillars, renders the HTML report, generates PDF, and saves to Obsidian. This is non-negotiable.
+
+**Investment Journal** (`investment-journal` skill)
+- **`/investment-journal week`** or **`/investment-journal month`** → invoke the `investment-journal` skill
+- Script: `finance/investment-journal/journal.py [week|month] [screenshot_path]`
+- Accepts a Robinhood/Fidelity screenshot → Claude vision extracts P&L → auto-fills journal template → saves to `Trading/Journal/` in Obsidian
+- Templates live at: `Rob's Life Plan/Templates/Weekly Investment Journal.md` and `Monthly Investment Check-in.md`
+- Phone workflow: Obsidian mobile (iCloud sync) + Claude.ai app for screenshot analysis
 
 ---
 
@@ -152,15 +191,55 @@ Rob operates in Amazon's Leadership Principles framework. When drafting document
 
 ## Project Workspace Structure
 
+Organized by purpose into four top-level categories:
+
+### `apps/` — Running web applications
 | Directory | Purpose |
 |---|---|
-| `superpowers/` | Claude Code plugin: agentic development methodology |
-| `notebooklm-py/` | Python client for Google NotebookLM (undocumented RPC APIs) |
-| `financial-services/` | FSI Cowork plugins + Claude Managed Agent templates |
-| `marketingskills/` | Agent Skills for marketing + Node.js CLI tools |
-| `research-agent/` | Automated research pipeline (web → NotebookLM → Obsidian) |
-| `daily-signal/` | Next.js 16 / React 19 / TypeScript / Tailwind app |
-| `awesome-claude-skills/` | Curated skill/plugin list |
-| `obsidian-skills/` | Obsidian-specific Agent Skills |
+| `apps/daily-signal/` | Next.js 16 / React 19 / TypeScript / Tailwind app |
+| `apps/Daily Signal Website/` | Old Daily Signal preview (archived) |
+
+### `finance/` — Financial tools and data
+| Directory | Purpose |
+|---|---|
+| `finance/financial-services/` | FSI Cowork plugins + Claude Managed Agent templates |
+| `finance/stock-screener/` | Equity screener + `analyze.py` for `/analyze <TICKER>` |
+| `finance/portfolio-reports/` | Generated portfolio HTML reports |
+| `finance/build_comps.py` | Comps builder script — outputs to `finance/amazon_comps_LTM2024.xlsx` |
+| `finance/amazon_comps_LTM2024.xlsx` | Amazon comps spreadsheet |
+
+### `agents/` — Automation pipelines and AI agents
+| Directory | Purpose |
+|---|---|
+| `agents/instagram-scanner/` | Instagram saved-post scanner (API → Claude vision → Obsidian + Excel) |
+| `agents/research-agent/` | Automated research pipeline (web → NotebookLM → Obsidian) |
+| `agents/notebooklm-py/` | Python client for Google NotebookLM (undocumented RPC APIs) |
+| `agents/pptx-build/` | PPTX builder tool (Node.js) |
+
+### `skills/` — Claude Code plugins and agent skills
+| Directory | Purpose |
+|---|---|
+| `skills/superpowers/` | Claude Code plugin: agentic development methodology |
+| `skills/marketingskills/` | Agent Skills for marketing + Node.js CLI tools |
+| `skills/obsidian-skills/` | Obsidian-specific Agent Skills |
+| `skills/awesome-claude-skills/` | Curated skill/plugin list |
+
+### Root
+| Item | Purpose |
+|---|---|
+| `docs/` | AI Company OS documents (BRD, PRFAQ, whitepaper, PPTX) |
+| `CLAUDE.md` | This file |
 
 Each subproject has its own `CLAUDE.md` or `AGENTS.md` — read it before working inside that project.
+
+---
+
+## Project Structure Convention
+
+**New projects always get their own standalone repo** — do NOT add new bots, apps, or agents inside `portfolio-analyzer`. This repo is for finance/trading tooling only.
+
+| Standalone Repo | GitHub | Purpose |
+|---|---|---|
+| `g6pd-bot/` at `~/Documents/Claude Code Projects/g6pd-bot/` | `github.com/liurober/g6pd-bot` | G6PD safety scanner Telegram bot (Aiden stream) |
+
+When starting any new project: create a new folder at `~/Documents/Claude Code Projects/<project-name>/`, init a new git repo, create a new GitHub repo via `gh repo create`.
